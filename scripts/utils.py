@@ -25,7 +25,7 @@ def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None):
     plt.show()
 
 
-def mirror(points):
+def mirror(points, AREA_W=20.0):
     mirrored_points = []
 
     # Define the corners of the square

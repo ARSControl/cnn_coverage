@@ -53,7 +53,7 @@ print("Device: ", device)
 
 model = SimpleCNN().to(device)
 
-model.load_state_dict(torch.load(PATH))
+model.load_state_dict(torch.load(MODEL_PATH))
 model.eval()
 print(model)
 
