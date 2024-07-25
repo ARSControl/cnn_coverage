@@ -41,7 +41,7 @@ EPISODES = 1
 
 path = Path().resolve()
 path = path / "trained_models"
-MODEL_PATH = path/'2d_cnn.pt'
+MODEL_PATH = path/'2d_param_cnn.pt'
 print("Model Path ", MODEL_PATH)
 
 
@@ -97,6 +97,7 @@ for episode in range(EPISODES):
   ## -------- Generate decentralized probability grid ---------
   GRID_STEPS = 64
   s = AREA_W/GRID_STEPS     # step
+  resolution = 2*ROBOT_RANGE / GRID_STEPS       # resolution of sensing area
 
   xg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
   yg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
@@ -189,7 +190,7 @@ for episode in range(EPISODES):
 
       img_in = torch.from_numpy(img_i).unsqueeze(0).unsqueeze(0)
       img_in = img_in.to(torch.float).to(device)
-      vels_i = model(img_in)
+      vels_i = model(img_in) * resolution
       
       # points[idx, 0] = points[idx, 0] + vel_i[0, 0]
       # points[idx, 1] = points[idx, 1] + vel_i[0, 1]
