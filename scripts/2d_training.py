@@ -35,8 +35,8 @@ SAFETY_DIST = 2.0
 EPISODES = 1
 
 
-path = Path().resolve()
-path = path / "datasets/coverage"
+home = Path().home()
+path = home / "liquid_networks/datasets/coverage"
 print("Path ", path)
 files = [x for x in path.glob("**/*") if x.is_file()]
 
@@ -121,6 +121,8 @@ for _, batch in enumerate(train_loader):
 
 
 lr = 0.001
+NUM_EPOCHS = 20
+
 cnn_lstm = SimpleCNN().to(device)
 from torch import optim
 
@@ -136,7 +138,7 @@ cnn_lstm.train()
 # Train the model
 total_step = len(train_loader)
 loss_values=[]
-for epoch in range(num_epochs):
+for epoch in range(NUM_EPOCHS):
   for i, (images, labels) in enumerate(train_loader):
     # clear gradients for this training step
     optimizer.zero_grad()
@@ -153,7 +155,7 @@ for epoch in range(num_epochs):
     running_loss =+ loss.item()
 
         
-  print (f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+  print (f'Epoch [{epoch+1}/{NUM_EPOCHS}], Loss: {loss.item():.4f}')
   #if (i+1) % 619 == 0:
     # print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {loss.item():.4f}')
     # print(f"Predicted: {output[epoch+1]}")
