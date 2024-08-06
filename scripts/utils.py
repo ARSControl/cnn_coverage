@@ -70,3 +70,23 @@ def gmm_pdf(x, y, means, covariances, weights):
     prob += weights[i] * gauss_pdf(x, y, means[i], covariances[i])
 
   return prob
+
+
+def gauss3d_pdf(x, y, z, mean, covariance):
+
+  points = np.column_stack([x.flatten(), y.flatten(), z.flatten()])
+  # Calculate the multivariate Gaussian probability
+  exponent = -0.5 * np.sum((points - mean) @ np.linalg.inv(covariance) * (points - mean), axis=1)
+  coefficient = 1 / np.sqrt((2 * np.pi) ** 2 * np.linalg.det(covariance))
+  prob = coefficient * np.exp(exponent)
+
+  return prob
+
+
+def gmm3d_pdf(x, y, z, means, covs, weights):
+  n_comps = len(means)
+  prob = 0.0
+  for i in range(n_comps):
+    prob += weights[i] * gauss3d_pdf(x, y, z, means[i], covs[i])
+  
+  return prob

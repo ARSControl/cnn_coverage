@@ -50,3 +50,89 @@ class SimpleCNN(nn.Module):
         x = self.fc3(x)
 
         return x
+
+class CNN_LSTM_3D_new(nn.Module):
+  def __init__(self):
+    super(CNN_LSTM_3D_new, self).__init__()
+    self.cnn = nn.Sequential(
+        nn.Conv3d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+    )
+    # self.fc = nn.Linear(hidden_size, num_classes)
+    # self.fc1 = nn.Linear(64*16*16*16, 64)
+    # self.fc_out = nn.Linear(64, num_classes)
+    self.fc1 = nn.Linear(256*2*2*2, 256)
+    # self.fc1 = nn.Linear(64*8*8*8, 256*8)
+    self.fc2 = nn.Linear(256, 128)
+    self.fc3 = nn.Linear(128, 3)
+    self.relu = nn.ReLU()
+    self.tanh = nn.Tanh()
+
+  def forward(self, x):
+    #cnn takes input of shape (batch_size, channels, seq_len)
+    out = self.cnn(x)
+    # lstm takes input of shape (batch_size, seq_len, input_size)
+    # print(f"shape after cnn: {out.shape}")
+    # out = out.view(out.shape[0], -1, out.shape[1])
+    out = out.view(out.shape[0], -1)
+    # print("Reshaped output: ", out.shape)
+    # out, _ = self.lstm(out)
+    # out = self.fc(out[:, -1, :])
+    out = self.relu(self.fc1(out))
+    out = self.relu(self.fc2(out))
+    out = self.fc3(out)
+    
+    return out
+
+class CNN_LSTM_3D_new2(nn.Module):
+  def __init__(self, input_size, hidden_size, num_classes):
+    super(CNN_LSTM_3D_new2, self).__init__()
+    self.cnn = nn.Sequential(
+        nn.Conv3d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.MaxPool3d(kernel_size=2, stride=2),
+    )
+    # self.fc = nn.Linear(hidden_size, num_classes)
+    # self.fc1 = nn.Linear(64*16*16*16, 64)
+    # self.fc_out = nn.Linear(64, num_classes)
+    self.fc1 = nn.Linear(256*2*2*2, 256)
+    # self.fc1 = nn.Linear(64*8*8*8, 256*8)
+    self.fc2 = nn.Linear(256, 128)
+    self.fc3 = nn.Linear(128, num_classes)
+    self.relu = nn.ReLU()
+    self.tanh = nn.Tanh()
+
+  def forward(self, x):
+    #cnn takes input of shape (batch_size, channels, seq_len)
+    out = self.cnn(x)
+    # lstm takes input of shape (batch_size, seq_len, input_size)
+    # print(f"shape after cnn: {out.shape}")
+    # out = out.view(out.shape[0], -1, out.shape[1])
+    out = out.view(out.shape[0], -1)
+    # print("Reshaped output: ", out.shape)
+    # out, _ = self.lstm(out)
+    # out = self.fc(out[:, -1, :])
+    out = self.relu(self.fc1(out))
+    out = self.relu(self.fc2(out))
+    out = self.fc3(out)
+    
+    return out
