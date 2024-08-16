@@ -26,7 +26,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device: ", device)
 model = Multichannel_2D_CNN().to(device)
 libpath = Path.home() / "crazyswarm/ros_ws/src/cnn_coverage"
-model.load_state_dict(torch.load(libpath/"trained_models/2d_param_cnn.pt", map_location=device))
+model.load_state_dict(torch.load(libpath/"trained_models/multichannel_2d_cnn.pt", map_location=device))
 model.eval()
 
 np.random.seed(0)
@@ -231,7 +231,12 @@ def main():
     plot_occgrid(Xg, Yg, Z, ax=ax)
     for i in range(ROBOTS_NUM):
         ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
-        ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1], s=18, marker='x')
+        ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1], s=18, marker='^')
+    for obs in obstacles:
+        xc = obs[0] + SAFETY_DIST*np.cos(th)
+        yc = obs[1] + SAFETY_DIST*np.sin(th)
+        ax.plot(xc, yc, linewidth=3, c='b')
+    
     plt.show()
 
 if __name__ == "__main__":
