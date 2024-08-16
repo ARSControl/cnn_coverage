@@ -31,18 +31,30 @@ model.eval()
 
 np.random.seed(0)
 
-ROBOTS_NUM = 8
+ROBOTS_NUM = 7
 ROBOT_RANGE = 3.0
 AREA_W = 10.0
-TARGETS_NUM = 4
+AREA_H = 6.0
+TARGETS_NUM = 2
 SAMPLES_NUM = 100
 STD_DEV = 1.0
 MAX_STEPS = 200
-SAFETY_DIST = 1.5
+SAFETY_DIST = 2.0
 CONVERGENCE_TOLERANCE = 0.1
+NUM_OBSTACLES = 1
 
-targets = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand(TARGETS_NUM, 2)
-# targets = np.array([[-2.5, -2.5], [2.5, 2.5]])
+AREA_BOTTOM = -3.5
+AREA_TOP = 2.5
+
+# targets = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand(TARGETS_NUM, 2)
+targets = np.array([[3.5, 1.0], [2.5, 2.0]])
+# targets = np.zeros((TARGETS_NUM, 2))
+# for k in range(TARGETS_NUM):
+#     targets[k, 0] = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand()
+#     targets[k, 1] = AREA_BOTTOM + 1 + (AREA_TOP-AREA_BOTTOM-2)*np.random.rand()
+
+obstacles = np.array([[-0.3, -2.0]])
+
 print("Targets shape:  ", targets.shape)
 print("TArget 0: ", targets[0])
 print("Target 1: ", targets[1])
@@ -66,7 +78,7 @@ r_step = 2 * ROBOT_RANGE / GRID_STEPS
 
 
 xg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
-yg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
+yg = np.linspace(AREA_BOTTOM, AREA_TOP, GRID_STEPS)
 Xg, Yg = np.meshgrid(xg, yg)
 Xg.shape
 print(Xg.shape)
@@ -80,6 +92,7 @@ Z = Z / Zmax
 
 #  CF params
 TAKEOFF_DURATION = 2.5
+LAND_DURATION = 2.5
 HOVER_DURATION = 5.0
 sleepRate = 10
 
@@ -140,8 +153,12 @@ def main():
 
                     # Check if outside boundaries
                     p_w = p_ij + p_i
-                    if p_w[0] < -0.5*AREA_W or p_w[0] > 0.5*AREA_W or p_w[1] < -0.5*AREA_W or p_w[1] > 0.5*AREA_W:
+                    if p_w[0] < -0.5*AREA_W or p_w[0] > 0.5*AREA_W or p_w[1] < AREA_BOTTOM or p_w[1] > AREA_TOP:
                         img_i[i, j] = -1.0
+                    # Check for obstacles
+                    for obs in obstacles:
+                        if np.linalg.norm(p_w - obs) < SAFETY_DIST:
+                            img_i[i, j] = -1.0
             img_in = torch.from_numpy(img_i).unsqueeze(0).unsqueeze(0)
             img_in = img_in.to(torch.float).to(device)
             vels_i = model(img_in) * r_step
@@ -153,8 +170,8 @@ def main():
         print("Velocities: ")
         print(vels)
 
-        for t in range(TARGETS_NUM):
-            plt.scatter(targets[t,0], targets[t,1], s=14, c='r', marker='x')
+        # for t in range(TARGETS_NUM):
+        #     plt.scatter(targets[t,0], targets[t,1], s=14, c='r', marker='x')
 
         for i in range(ROBOTS_NUM):
             v = np.array([vels[i, 0], vels[i, 1], 0.0])
@@ -179,15 +196,32 @@ def main():
 
 
 
+    print("Landing...")
 
-    allcfs.land(targetHeight=0.04, duration=2.5)
-    timeHelper.sleep(TAKEOFF_DURATION)
+   
+    landed = False
+    while not landed:
+        landed = True
+        for i in range(ROBOTS_NUM):
+            v = np.array([0.0, 0.0, -0.1])
+            allcfs.crazyflies[i].cmdVelocityWorld(v, yawRate=0)
+            if allcfs.crazyflies[i].position()[-1] > 0.1:
+                landed = False
+        timeHelper.sleepForRate(sleepRate)
+
+    allcfs.land(targetHeight=0.04, duration=LAND_DURATION)
+    timeHelper.sleep(LAND_DURATION)
 
     robots_hist = robots_hist[1:]
     for i in range(ROBOTS_NUM):
         plt.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
     for t in range(TARGETS_NUM):
-        plt.scatter(targets[t,0], targets[t,1], s=14, c='r', marker='x')
+        plt.scatter(targets[t,0], targets[t,1], s=14, c='r', marker='^')
+    th = np.arange(0, 2*np.pi+np.pi/20, np.pi/20)
+    for obs in obstacles:
+        xc = obs[0] + SAFETY_DIST*np.cos(th)
+        yc = obs[1] + SAFETY_DIST*np.sin(th)
+        plt.plot(xc, yc, linewidth=3, c='red')
     
     plt.show()
 
