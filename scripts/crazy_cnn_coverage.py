@@ -1,6 +1,5 @@
 """Takeoff-hover-land for one CF. Useful to validate hardware config."""
 
-from pycrazyswarm import Crazyswarm
 import numpy as np
 import random
 from pathlib import Path
@@ -15,15 +14,18 @@ import torch
 import torch.nn as nn
 
 # import custom lib
-libpath = Path.home() / "cnn_coverage"
-print("dirnaem: ", (str(libpath)))
-sys.path.append(str(libpath/"scripts"))
 from utils import *
 from models import *
+
+crazypath = Path.home() / "crazyswarm/ros_ws/src/crazyswarm"
+sys.path.append(str(crazypath/"scripts"))
+from pycrazyswarm import Crazyswarm
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device: ", device)
 model = SimpleCNN().to(device)
+libpath = Path.home() / "crazyswarm/ros_ws/src/cnn_coverage"
 model.load_state_dict(torch.load(libpath/"trained_models/2d_param_cnn.pt", map_location=device))
 model.eval()
 
@@ -82,7 +84,8 @@ HOVER_DURATION = 5.0
 sleepRate = 10
 
 def main():
-    swarm = Crazyswarm()
+
+    swarm = Crazyswarm(crazyflies_yaml=str(crazypath/"launch/crazyflies.yaml"))
     timeHelper = swarm.timeHelper
     allcfs = swarm.allcfs
 
