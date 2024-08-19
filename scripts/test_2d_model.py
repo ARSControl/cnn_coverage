@@ -225,7 +225,7 @@ for episode in range(EPISODES):
       lim_region = intersection(poly, range_poly)
 
       dA = r_step**2
-      for x_i in np.arange(p_i[0]-ROBOT_RANGE, p_i[1]+ROBOT_RANGE, r_step):
+      for x_i in np.arange(p_i[0]-ROBOT_RANGE, p_i[0]+ROBOT_RANGE, r_step):
         for y_i in np.arange(p_i[1]-ROBOT_RANGE, p_i[1]+ROBOT_RANGE, r_step):
           pt = Point(x_i, y_i)
           if lim_region.contains(pt):
