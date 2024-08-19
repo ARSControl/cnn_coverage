@@ -118,7 +118,7 @@ for episode in range(EPISODES):
 
   # ---------- Simulate episode ---------
   # ROBOTS_NUM = np.random.randint(6, ROBOTS_MAX)
-  ROBOTS_NUM = 12
+  ROBOTS_NUM = 20
   converged = False
   points = -0.5*AREA_W + AREA_W * np.random.rand(ROBOTS_NUM, 2)
   robots_hist = np.zeros((1, points.shape[0], points.shape[1]))
@@ -285,5 +285,5 @@ plt.show()
 
 path = Path().resolve()
 res_path = path / "results"
-np.save(res_path/"eta12.npy", eval_data)
-np.save(res_path/"collisions12.npy", collision_counter)
+np.save(res_path/"eta16.npy", eval_data)
+np.save(res_path/"collisions16.npy", collision_counter)
