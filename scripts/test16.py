@@ -236,11 +236,11 @@ for episode in range(EPISODES):
       # Check collisions
       dist = np.linalg.norm(local_pts, axis=1)
       if (dist < 0.2).any():
-        collision_counter[episode, s] = 1
+        collision_counter[episode, s-1] = 1
         print("Collision detected with neighbors!")
       for obs in obstacles:
         if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
-          collision_counter[episode, s] = 1
+          collision_counter[episode, s-1] = 1
           print("Collision detected with obstacle!")
 
       img_i = np.concatenate((img_i, img_obs), 0)
@@ -266,6 +266,12 @@ for episode in range(EPISODES):
 
     if all_stopped:
       break
+    
+  
+  path = Path().resolve()
+  res_path = path / "results"
+  np.save(res_path/"eta16.npy", eval_data)
+  np.save(res_path/"collisions16.npy", collision_counter)
 
 """
 for i in range(ROBOTS_NUM):
@@ -283,7 +289,4 @@ for i in range(ROBOTS_NUM):
 plt.show()
 """
 
-path = Path().resolve()
-res_path = path / "results"
-np.save(res_path/"eta16.npy", eval_data)
-np.save(res_path/"collisions16.npy", collision_counter)
+
