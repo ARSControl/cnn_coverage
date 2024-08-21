@@ -24,7 +24,6 @@ print("Eta shape after removing: ", etas[0].shape)
 
 for e in range(len(etas)):
     ids = (etas[e]==0).argmax(axis=1)
-    print("Id shape: ", ids.shape)
     for i in range(etas[e].shape[0]):
         etas[e][i, ids[i]:] = etas[e][i, ids[i]-1]
 
@@ -35,6 +34,20 @@ stds = []
 for eta in etas:
     etas_m.append(np.mean(eta, axis=0))
     stds.append(np.std(eta, axis=0))
+
+
+collisions_num = []
+for i in range(len(collisions)):
+    tot = 0
+    c = collisions[i]
+    c[:, :20] = 0
+    for j in range(c.shape[0]):
+        a = np.where(c[j, :] == 1)
+        if a[0].shape[0] > 0:
+            tot += 1
+    collisions_num.append(tot)
+    print(f"Number of collisions with {ns[i]} robots: {tot}")
+    
 
 t = np.arange(100)
 colors = ['tab:blue', 'tab:orange', 'tab:green']
