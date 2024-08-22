@@ -235,7 +235,7 @@ for episode in range(EPISODES):
 
       # Check collisions
       dist = np.linalg.norm(local_pts, axis=1)
-      if (dist < 0.2).any():
+      if (dist < 0.1).any():
         collision_counter[episode, s-1] = 1
         print("Collision detected with neighbors!")
       for obs in obstacles:
