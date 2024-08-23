@@ -48,6 +48,9 @@ print("Device: ", device)
 #c=0
 
 test_img = imgs[0]
+ROBOTS_NUM = test_img.shape[1]
+NUM_CHANNELS = test_img.shape[2]
+
 print("Test img shape: ", test_img.shape)
 print("Max val in channel 1: ", test_img[:, :, 1, :, :].max())
 
@@ -58,7 +61,7 @@ print("Max val in channel 1: ", test_img[:, :, 1, :, :].max())
 #c.shape
 
 # definire c come una matrice vuota
-c=torch.empty((0,6,2,64,64))
+c=torch.empty((0,ROBOTS_NUM,NUM_CHANNELS,64,64))
 for i in range(FILES_NUM):
   a=torch.tensor(imgs[i], dtype=torch.float32)
 #a=imgs[i]
@@ -74,7 +77,7 @@ r6= c[:, 5, :, :, :]
 p1 = torch.cat((r1, r2, r3, r4, r5, r6))
 
 # crea tensori anche sulle velocità in uscita
-f=torch.empty((0,6,2))
+f=torch.empty((0,ROBOTS_NUM,2))
 
 for j in range(FILES_NUM):
   e=torch.tensor(vels[j], dtype=torch.float32)
@@ -127,9 +130,9 @@ for _, batch in enumerate(train_loader):
 
 
 lr = 0.001
-NUM_EPOCHS = 50
+NUM_EPOCHS = 20
 
-cnn_lstm = Multichannel_2D_CNN().to(device)
+cnn_lstm = Multichannel_2D_CNN(NUM_CHANNELS).to(device)
 from torch import optim
 # Loss and optimizer
 #criterion = nn.CrossEntropyLoss()

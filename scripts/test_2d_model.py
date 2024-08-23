@@ -25,7 +25,7 @@ SAFETY_DIST = 2.0
 EPISODES = 100
 NUM_OBSTACLES = 4
 NUM_STEPS = 100
-
+NUM_CHANNELS = 3
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -48,7 +48,7 @@ from torch.nn import functional as F
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device: ", device)
 
-model = Multichannel_2D_CNN().to(device)
+model = Multichannel_2D_CNN(NUM_CHANNELS).to(device)
 
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.eval()
@@ -98,7 +98,6 @@ for episode in range(EPISODES):
   ## -------- Generate decentralized probability grid ---------
   GRID_STEPS = 64
   s = AREA_W/GRID_STEPS     # step
-  NUM_CHANNELS = 3
 
   xg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
   yg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
@@ -273,7 +272,7 @@ for episode in range(EPISODES):
   np.save(res_path/"eta12.npy", eval_data)
   np.save(res_path/"collisions12.npy", collision_counter)
 
-"""
+'''
 for i in range(ROBOTS_NUM):
   ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
   ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
@@ -287,6 +286,6 @@ for i in range(ROBOTS_NUM):
   ax2.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
 plt.show()
-"""
+'''
 
 
