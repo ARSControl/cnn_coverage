@@ -18,7 +18,7 @@ ROBOT_RANGE = 3.0
 TARGETS_NUM = 4
 COMPONENTS_NUM = 4
 PARTICLES_NUM = 500
-AREA_W = 20.0
+AREA_W = 30.0
 GRID_STEPS = 64
 vmax = 1.5
 SAFETY_DIST = 2.0
@@ -36,7 +36,8 @@ from pathlib import Path
 
 path = Path().resolve()
 path = path / "trained_models"
-MODEL_PATH = path/'multichannel_2d_cnn.pt'
+# MODEL_PATH = path/'multichannel_2d_cnn.pt'
+MODEL_PATH = path/'2d_cnn_3ch.pt'
 print("Model Path ", MODEL_PATH)
 
 
@@ -97,7 +98,7 @@ for episode in range(EPISODES):
   ## -------- Generate decentralized probability grid ---------
   GRID_STEPS = 64
   s = AREA_W/GRID_STEPS     # step
-  NUM_CHANNELS = 2
+  NUM_CHANNELS = 3
 
   xg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
   yg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
@@ -196,6 +197,7 @@ for episode in range(EPISODES):
       local_pts = np.delete(local_pts, undetected, 0)
 
       img_obs = np.zeros((1, GRID_STEPS, GRID_STEPS))
+      img_neighs = np.zeros((1, GRID_STEPS, GRID_STEPS))
       for i in range(GRID_STEPS):
         for j in range(GRID_STEPS):
           # jj = GRID_STEPS-1-j
@@ -203,7 +205,7 @@ for episode in range(EPISODES):
           # print(f"Point ({i},{j}): {p_ij}")
           for n in local_pts:
             if np.linalg.norm(n - p_ij) <= SAFETY_DIST:
-              img_obs[0, i, j] = 255
+              img_neighs[0, i, j] = 255
 
           # Check if outside boundaries
           p_w = p_ij + p_i
@@ -244,6 +246,7 @@ for episode in range(EPISODES):
           print("Collision detected with obstacle!")
 
       img_i = np.concatenate((img_i, img_obs), 0)
+      img_i = np.concatenate((img_i, img_neighs), 0)
       # print("img_i shape: ", img_i.shape)
 
       img_in = torch.from_numpy(img_i).unsqueeze(0)#.unsqueeze(0)
