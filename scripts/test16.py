@@ -6,6 +6,7 @@ from shapely import Polygon, Point, intersection
 from tqdm import tqdm
 from pathlib import Path
 import math
+from scipy.optimize import minimize
 
 from copy import deepcopy as dc
 from sklearn.mixture import GaussianMixture
@@ -26,6 +27,7 @@ EPISODES = 100
 NUM_OBSTACLES = 4
 NUM_STEPS = 100
 NUM_CHANNELS = 3
+GAMMA = 0.2
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -251,12 +253,32 @@ for episode in range(EPISODES):
       img_in = torch.from_numpy(img_i).unsqueeze(0)#.unsqueeze(0)
       img_in = img_in.to(torch.float).to(device)
       vel_i = model(img_in) * resolution
+      vel_i = vel_i.squeeze(0)
+      vel_i = vel_i.cpu().detach().numpy()
+
+      # CBF
+      local_pts = neighs - p_i
+      constraints = []
+      for n in local_pts:
+        h = np.linalg.norm(n)**2 - SAFETY_DIST**2
+        A_cbf = -2*n
+        b_cbf = GAMMA * h
+        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+      
+      # print("vdes: ", vel_i)
+      # print("Acbf: ", A_cbf)
+      # print("b_cbf: ", b_cbf)
+      # print("h: ", h)
+      obj = lambda u: objective_function(u-vel_i)
+      res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+      v_opt = res.x
+
       # print(f"Velocity of robot {idx}: {vel_i}")
       # print("points[idx] shape: ", points[idx, :].shape)
-      points[idx, 0] = points[idx, 0] + vel_i[0, 0]*dt
-      points[idx, 1] = points[idx, 1] + vel_i[0, 1]*dt
+      points[idx, 0] = points[idx, 0] + v_opt[0]*dt
+      points[idx, 1] = points[idx, 1] + v_opt[1]*dt
 
-      if torch.norm(vel_i) > 0.15:
+      if np.linalg.norm(v_opt) > 0.15:
         all_stopped = False
     
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
