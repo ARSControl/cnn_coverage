@@ -164,7 +164,7 @@ for episode in range(EPISODES):
     # mirror points across each edge of the env
     dummy_points = np.zeros((5*ROBOTS_NUM, 2))
     dummy_points[:ROBOTS_NUM, :] = points
-    mirrored_points = mirror(points)
+    mirrored_points = mirror(points, AREA_W)
     mir_pts = np.array(mirrored_points)
     dummy_points[ROBOTS_NUM:, :] = mir_pts
 

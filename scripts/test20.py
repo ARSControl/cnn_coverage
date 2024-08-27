@@ -163,7 +163,7 @@ for episode in range(EPISODES):
     # mirror points across each edge of the env
     dummy_points = np.zeros((5*ROBOTS_NUM, 2))
     dummy_points[:ROBOTS_NUM, :] = points
-    mirrored_points = mirror(points)
+    mirrored_points = mirror(points, AREA_W)
     mir_pts = np.array(mirrored_points)
     dummy_points[ROBOTS_NUM:, :] = mir_pts
 
@@ -176,6 +176,7 @@ for episode in range(EPISODES):
     vel_s = np.zeros((ROBOTS_NUM, 2))
     num = 0.0
     collision = False
+    lim_regions = []
     for idx in range(ROBOTS_NUM):
       p_i = vor.points[idx]
 
@@ -233,7 +234,6 @@ for episode in range(EPISODES):
       rng_pts = p_i + ROBOT_RANGE * np.array([np.cos(th), np.sin(th)]).transpose()
       range_poly = Polygon(rng_pts)
       lim_region = intersection(poly, range_poly)
-
       dA = r_step**2
       for x_i in np.arange(p_i[0]-ROBOT_RANGE, p_i[0]+ROBOT_RANGE, r_step):
         for y_i in np.arange(p_i[1]-ROBOT_RANGE, p_i[1]+ROBOT_RANGE, r_step):
