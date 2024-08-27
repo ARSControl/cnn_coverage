@@ -59,6 +59,12 @@ print(model)
 eval_data = np.zeros((EPISODES, NUM_STEPS))
 collision_counter = np.zeros((EPISODES, NUM_STEPS))
 
+def objective_function(u):
+  return np.linalg.norm(u)**2
+
+def safety_constraint(u, A, b):
+  return -np.dot(A,u) + b
+
 for episode in range(EPISODES):
   print(f"*** Episode {episode} ***")
   targets = np.zeros((TARGETS_NUM, 1, 2))
@@ -264,7 +270,13 @@ for episode in range(EPISODES):
         A_cbf = -2*n
         b_cbf = GAMMA * h
         constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
-      
+
+      local_obs = obstacles - p_i
+      for obs in local_obs:
+        h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+        A_cbf = -2*obs
+        b_cbf = GAMMA * h
+        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
       # print("vdes: ", vel_i)
       # print("Acbf: ", A_cbf)
       # print("b_cbf: ", b_cbf)

@@ -273,6 +273,13 @@ for episode in range(EPISODES):
         A_cbf = -2*n
         b_cbf = GAMMA * h
         constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+
+      local_obs = obstacles - p_i
+      for obs in local_obs:
+        h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+        A_cbf = -2*obs
+        b_cbf = GAMMA * h
+        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
       
       # print("vdes: ", vel_i)
       # print("Acbf: ", A_cbf)
