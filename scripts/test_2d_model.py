@@ -28,6 +28,7 @@ NUM_OBSTACLES = 4
 NUM_STEPS = 100
 NUM_CHANNELS = 3
 GAMMA = 0.2
+USE_CBF = True
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -154,6 +155,8 @@ for episode in range(EPISODES):
   imgs = np.zeros((1, ROBOTS_NUM, NUM_CHANNELS, GRID_STEPS, GRID_STEPS))
   vels = np.zeros((1, ROBOTS_NUM, 2))
 
+  # poly_env = Polygon((-0.5*AREA_W, -0.5*AREA_W), (0.5*AREA_W, -0.5*AREA_W), (0.5*AREA_W, 0.5*AREA_W), (-0.5*AREA_W, 0.5*AREA_W))
+
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
   denom = np.sum(s**2 * gmm_pdf(Xg, Yg, means, covariances, mix))
   print("Total info: ", denom)
@@ -266,35 +269,37 @@ for episode in range(EPISODES):
       
 
       # CBF
-      local_pts = neighs - p_i
-      constraints = []
-      for n in local_pts:
-        h = np.linalg.norm(n)**2 - SAFETY_DIST**2
-        A_cbf = -2*n
-        b_cbf = GAMMA * h
-        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+      if USE_CBF:
+        local_pts = neighs - p_i
+        constraints = []
+        for n in local_pts:
+          h = np.linalg.norm(n)**2 - SAFETY_DIST**2
+          A_cbf = 2*n
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
 
-      local_obs = obstacles - p_i
-      for obs in local_obs:
-        h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
-        A_cbf = -2*obs
-        b_cbf = GAMMA * h
-        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
-      
-      # print("vdes: ", vel_i)
-      # print("Acbf: ", A_cbf)
-      # print("b_cbf: ", b_cbf)
-      # print("h: ", h)
-      obj = lambda u: objective_function(u-vel_i)
-      res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
-      v_opt = res.x
+        local_obs = obstacles - p_i
+        for obs in local_obs:
+          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          A_cbf = 2*obs
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        
+        # print("vdes: ", vel_i)
+        # print("Acbf: ", A_cbf)
+        # print("b_cbf: ", b_cbf)
+        # print("h: ", h)
+        obj = lambda u: objective_function(u-vel_i)
+        res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+        vel_i = res.x
+        
 
       # print(f"Velocity of robot {idx}: {vel_i}")
       # print("points[idx] shape: ", points[idx, :].shape)
-      points[idx, 0] = points[idx, 0] + v_opt[0]*dt
-      points[idx, 1] = points[idx, 1] + v_opt[1]*dt
+      points[idx, 0] = points[idx, 0] + vel_i[0]*dt
+      points[idx, 1] = points[idx, 1] + vel_i[1]*dt
 
-      if np.linalg.norm(v_opt) > 0.15:
+      if np.linalg.norm(vel_i) > 0.15:
         all_stopped = False
     
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
@@ -310,7 +315,7 @@ for episode in range(EPISODES):
   np.save(res_path/"eta12.npy", eval_data)
   np.save(res_path/"collisions12.npy", collision_counter)
 
-'''
+
 for i in range(ROBOTS_NUM):
   ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
   ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
@@ -324,6 +329,5 @@ for i in range(ROBOTS_NUM):
   ax2.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
 plt.show()
-'''
 
 

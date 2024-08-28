@@ -28,6 +28,7 @@ NUM_OBSTACLES = 4
 NUM_STEPS = 100
 NUM_CHANNELS = 3
 GAMMA = 0.2
+USE_CBF = True
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -263,34 +264,35 @@ for episode in range(EPISODES):
       vel_i = vel_i.cpu().detach().numpy()
 
       # CBF
-      local_pts = neighs - p_i
-      constraints = []
-      for n in local_pts:
-        h = np.linalg.norm(n)**2 - SAFETY_DIST**2
-        A_cbf = -2*n
-        b_cbf = GAMMA * h
-        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
-      
-      local_obs = obstacles - p_i
-      for obs in local_obs:
-        h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
-        A_cbf = -2*obs
-        b_cbf = GAMMA * h
-        constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
-      # print("vdes: ", vel_i)
-      # print("Acbf: ", A_cbf)
-      # print("b_cbf: ", b_cbf)
-      # print("h: ", h)
-      obj = lambda u: objective_function(u-vel_i)
-      res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
-      v_opt = res.x
+      if USE_CBF:
+        local_pts = neighs - p_i
+        constraints = []
+        for n in local_pts:
+          h = np.linalg.norm(n)**2 - SAFETY_DIST**2
+          A_cbf = 2*n
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        
+        local_obs = obstacles - p_i
+        for obs in local_obs:
+          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          A_cbf = 2*obs
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        # print("vdes: ", vel_i)
+        # print("Acbf: ", A_cbf)
+        # print("b_cbf: ", b_cbf)
+        # print("h: ", h)
+        obj = lambda u: objective_function(u-vel_i)
+        res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+        vel_i = res.x
 
       # print(f"Velocity of robot {idx}: {vel_i}")
       # print("points[idx] shape: ", points[idx, :].shape)
-      points[idx, 0] = points[idx, 0] + v_opt[0]*dt
-      points[idx, 1] = points[idx, 1] + v_opt[1]*dt
+      points[idx, 0] = points[idx, 0] + vel_i[0]*dt
+      points[idx, 1] = points[idx, 1] + vel_i[1]*dt
 
-      if np.linalg.norm(v_opt) > 0.15:
+      if np.linalg.norm(vel_i) > 0.15:
         all_stopped = False
     
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
