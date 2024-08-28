@@ -2,6 +2,19 @@ import numpy as np
 import math
 from pathlib import Path
 from matplotlib import pyplot as plt
+import argparse
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--plot', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+        help="plot eta")
+    args = parser.parse_args()
+    return args
+
+
+args = parse_args()
+
 
 path = Path.home() / "cnn_coverage/results"
 files = [a for a in path.glob("**/*")]
@@ -49,12 +62,13 @@ for i in range(len(collisions)):
     print(f"Number of collisions with {ns[i]} robots: {tot}")
     
 
-t = np.arange(100)
-colors = ['tab:blue', 'tab:orange', 'tab:green']
-for i, eta in enumerate(etas_m):
-    plt.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
-    plt.fill_between(t, eta-stds[i], eta+stds[i], color=colors[i], alpha=0.2)
+if args.plot:
+    t = np.arange(100)
+    colors = ['tab:blue', 'tab:orange', 'tab:green']
+    for i, eta in enumerate(etas_m):
+        plt.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
+        plt.fill_between(t, eta-stds[i], eta+stds[i], color=colors[i], alpha=0.2)
 
-plt.grid()
-plt.legend()
-plt.show()
+    plt.grid()
+    plt.legend()
+    plt.show()
