@@ -33,7 +33,8 @@ for e in range(len(etas)):
         if etas[e][i, 0] == 0:
             break
     etas[e] = etas[e][:i, :]
-print("Eta shape after removing: ", etas[0].shape)
+   
+# print("Eta shape after removing: ", etas[0].shape)
 
 for e in range(len(etas)):
     ids = (etas[e]==0).argmax(axis=1)
@@ -41,13 +42,12 @@ for e in range(len(etas)):
         etas[e][i, ids[i]:] = etas[e][i, ids[i]-1]
 
 
-
 etas_m = []
 stds = []
 for eta in etas:
     etas_m.append(np.mean(eta, axis=0))
     stds.append(np.std(eta, axis=0))
-
+    print("eta: ", etas_m[-1][-1])
 
 collisions_num = []
 for i in range(len(collisions)):

@@ -24,11 +24,11 @@ GRID_STEPS = 64
 vmax = 1.5
 SAFETY_DIST = 2.0
 EPISODES = 100
-NUM_OBSTACLES = 4
+NUM_OBSTACLES = 0 
 NUM_STEPS = 100
 NUM_CHANNELS = 3
 GAMMA = 0.2
-USE_CBF = True
+USE_CBF = False
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -71,8 +71,8 @@ for episode in range(EPISODES):
   print(f"*** Episode {episode} ***")
   targets = np.zeros((TARGETS_NUM, 1, 2))
   for i in range(TARGETS_NUM):
-    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
-    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
+    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
+    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
 
   # plt.plot([-0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, -0.5*AREA_W], c='tab:blue', label="Environment")
   # plt.plot([0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
@@ -159,7 +159,6 @@ for episode in range(EPISODES):
 
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
   denom = np.sum(s**2 * gmm_pdf(Xg, Yg, means, covariances, mix))
-  print("Total info: ", denom)
   for s in range(1, NUM_STEPS+1):
     # print(f"*** Step {s} ***")
     all_stopped = True
@@ -304,18 +303,17 @@ for episode in range(EPISODES):
     
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
     eta = num / denom
-    # print("Efficiency: ", eta)
-    eval_data[episode, s-1] = eta
+    eval_data[episode, s-1] = eta[0]
 
     if all_stopped:
       break
 
   path = Path().resolve()
   res_path = path / "results"
-  np.save(res_path/"eta12.npy", eval_data)
-  np.save(res_path/"collisions12.npy", collision_counter)
+  np.save(res_path/"eta12_conv.npy", eval_data)
+  np.save(res_path/"collisions12_conv.npy", collision_counter)
 
-
+'''
 for i in range(ROBOTS_NUM):
   ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
   ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
@@ -329,5 +327,5 @@ for i in range(ROBOTS_NUM):
   ax2.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
 plt.show()
-
+'''
 

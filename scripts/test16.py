@@ -70,8 +70,8 @@ for episode in range(EPISODES):
   print(f"*** Episode {episode} ***")
   targets = np.zeros((TARGETS_NUM, 1, 2))
   for i in range(TARGETS_NUM):
-    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
-    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
+    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
+    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
 
   # plt.plot([-0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, -0.5*AREA_W], c='tab:blue', label="Environment")
   # plt.plot([0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
@@ -298,7 +298,7 @@ for episode in range(EPISODES):
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
     eta = num / denom
     # print("Efficiency: ", eta)
-    eval_data[episode, s-1] = eta
+    eval_data[episode, s-1] = eta[0]
 
     
 

@@ -43,7 +43,7 @@ AREA_W = args.width
 vmax = 1.5
 SAFETY_DIST = 2.0
 NUM_STEPS = 100
-EPISODES = 1
+EPISODES = 100
 print("ROOBTS NUM : ", ROBOTS_NUM)
 
 path = Path().resolve()
