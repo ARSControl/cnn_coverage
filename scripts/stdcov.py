@@ -19,6 +19,7 @@ from pathlib import Path
 import math
 
 from sklearn.mixture import GaussianMixture
+from scipy.optimize import minimize
 import argparse
 
 from utils import *
@@ -27,10 +28,17 @@ from utils import *
 def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--robots-num', type=int,  default=12, help="number of robots")
+  parser.add_argument('--obstacles-num', type=int,  default=0, help="number of obstacles")
   parser.add_argument('--range', type=float,  default=3.0, help="sensing range")
   parser.add_argument('--width', type=float,  default=30.0, help="area width")
   args = parser.parse_args()
   return args
+
+def objective_function(u):
+  return np.linalg.norm(u)**2
+
+def safety_constraint(u, A, b):
+  return -np.dot(A,u) + b
 
 
 args = parse_args()
@@ -39,11 +47,13 @@ ROBOT_RANGE = args.range
 TARGETS_NUM = 4
 COMPONENTS_NUM = 4
 PARTICLES_NUM = 500
+OBSTACLES_NUM = args.obstacles_num
 AREA_W = args.width
 vmax = 1.5
 SAFETY_DIST = 2.0
 NUM_STEPS = 100
 EPISODES = 100
+USE_CBF = True if OBSTACLES_NUM > 0 else False
 print("ROOBTS NUM : ", ROBOTS_NUM)
 
 path = Path().resolve()
@@ -60,15 +70,6 @@ for episode in range(EPISODES):
     targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
     targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
 
-  '''
-  plt.plot([-0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, -0.5*AREA_W], c='tab:blue', label="Environment")
-  plt.plot([0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
-  plt.plot([0.5*AREA_W, -0.5*AREA_W], [0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
-  plt.plot([-0.5*AREA_W, -0.5*AREA_W], [0.5*AREA_W, -0.5*AREA_W], c='tab:blue')
-  plt.scatter(targets[:, :, 0], targets[:, :, 1], c='tab:orange', label="Targets")
-  # plt.legend()
-  plt.show()
-  '''
 
   """## Define GMM from noisy target measurements"""
 
@@ -78,14 +79,6 @@ for episode in range(EPISODES):
     for i in range(PARTICLES_NUM):
       samples[k, i, :] = targets[k, 0, :] + STD_DEV * np.random.randn(1, 2)
 
-  """
-  plt.plot([-0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, -0.5*AREA_W], c='tab:blue', label="Environment")
-  plt.plot([0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
-  plt.plot([0.5*AREA_W, -0.5*AREA_W], [0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
-  plt.plot([-0.5*AREA_W, -0.5*AREA_W], [0.5*AREA_W, -0.5*AREA_W], c='tab:blue')
-  plt.scatter(targets[:, :, 0], targets[:, :, 1], c='tab:orange', label="Targets")
-  plt.scatter(samples[:, :, 0], samples[:, :, 1], c='tab:olive')
-  """
 
   # Fit GMM
   samples = samples.reshape((TARGETS_NUM*PARTICLES_NUM, 2))
@@ -129,6 +122,19 @@ for episode in range(EPISODES):
   robots_hist[0, :, :] = points
   vis_regions = []
   discretize_precision = 0.5
+  dt = 0.25
+  GAMMA = 0.2
+
+  # OBSTACLES
+  obstacles = np.zeros((OBSTACLES_NUM, 2))
+  for i in range(OBSTACLES_NUM):
+    done = False
+    while not done:
+      obstacles[i, :] = -0.5*AREA_W + AREA_W*np.random.rand(1, 2)
+      obs_rel = points - obstacles[i]
+      norm = np.linalg.norm(obs_rel, axis=1)
+      if (norm > 3.0).all():
+        done = True   
 
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
   denom = np.sum(s**2 * gmm_pdf(Xg, Yg, means, covariances, mix))
@@ -216,6 +222,10 @@ for episode in range(EPISODES):
       if (dist < 0.1).any():
         collision_counter[episode, s-1] = 1
         print("Collision detected with neighbors!")
+      for obs in obstacles:
+        if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
+          collision_counter[episode, s-1] = 1
+          print("Collision detected with obstacle!")
 
 
       # Calculate centroid with gaussian distribution
@@ -248,11 +258,36 @@ for episode in range(EPISODES):
       # print(f"Centroid: {centr}")
       dist = np.linalg.norm(robot-centr)
       vel = 0.8 * (centr - robot)
-      vel[0, 0] = max(-vmax, min(vmax, vel[0,0]))
-      vel[0, 1] = max(-vmax, min(vmax, vel[0,1]))
+      vel_i = vel[0, :]
+      vel_i[0] = max(-vmax, min(vmax, vel_i[0]))
+      vel_i[1] = max(-vmax, min(vmax, vel_i[1]))
 
-      points[idx, :] = robot + vel
-      if dist > 0.15:
+      # CBF
+      if USE_CBF:
+        local_pts = neighs - p_i
+        constraints = []
+        for n in local_pts:
+          h = np.linalg.norm(n)**2 - SAFETY_DIST**2
+          A_cbf = 2*n
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        
+        local_obs = obstacles - p_i
+        for obs in local_obs:
+          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          A_cbf = 2*obs
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        # print("vdes: ", vel_i)
+        # print("Acbf: ", A_cbf)
+        # print("b_cbf: ", b_cbf)
+        # print("h: ", h)
+        obj = lambda u: objective_function(u-vel_i)
+        res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+        vel_i = res.x
+
+      points[idx, :] = robot + vel_i*dt
+      if np.linalg.norm(vel_i) > 0.15:
         conv = False
       
     eta = num / denom
@@ -267,8 +302,8 @@ for episode in range(EPISODES):
   print("Eta: ", eta)
   print("Collisions: ", collision_counter[0, :].sum())
   res_path = path / "results"
-  np.save(res_path/f"eta{ROBOTS_NUM}_std.npy", eval_data)
-  np.save(res_path/f"collisions{ROBOTS_NUM}_std.npy", collision_counter)
+  np.save(res_path/f"eta{ROBOTS_NUM}_std_{OBSTACLES_NUM}_obs.npy", eval_data)
+  np.save(res_path/f"collisions{ROBOTS_NUM}_std_{OBSTACLES_NUM}_obs.npy", collision_counter)
 
 
 
