@@ -13,6 +13,8 @@ from sklearn.mixture import GaussianMixture
 import torch
 import torch.nn as nn
 
+from datetime import datetime
+
 # import custom lib
 from utils import *
 from models import *
@@ -31,20 +33,21 @@ def safety_constraint(u, A, b):
   return -np.dot(A,u) + b
 
 ROBOTS_NUM = 7
-ROBOT_RANGE = 3.0
+ROBOT_RANGE = 2.0
 AREA_W = 10.0
 AREA_H = 6.0
 TARGETS_NUM = 2
 SAMPLES_NUM = 100
 STD_DEV = 1.0
 MAX_STEPS = 200
-SAFETY_DIST = 2.0
+SAFETY_DIST = 1.0
 CONVERGENCE_TOLERANCE = 0.1
 NUM_OBSTACLES = 1
 NUM_CHANNELS = 3
 GAMMA = 0.5
 vmax = 1.5
-USE_CBF = False
+USE_CBF = True
+SAVE_POS = True
 
 AREA_BOTTOM = -3.5
 AREA_TOP = 2.5
@@ -60,12 +63,13 @@ np.random.seed(0)
 
 # targets = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand(TARGETS_NUM, 2)
 targets = np.array([[3.5, 1.0], [2.5, 2.0]])
+# targets = np.array([[-2.5, 1.0], [2.5, 2.0]])
 # targets = np.zeros((TARGETS_NUM, 2))
 # for k in range(TARGETS_NUM):
 #     targets[k, 0] = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand()
 #     targets[k, 1] = AREA_BOTTOM + 1 + (AREA_TOP-AREA_BOTTOM-2)*np.random.rand()
 
-obstacles = np.array([[-0.3, -2.0]])
+obstacles = np.array([[-0.3, 0.0]])
 
 print("Targets shape:  ", targets.shape)
 print("TArget 0: ", targets[0])
@@ -245,6 +249,22 @@ def main():
     timeHelper.sleep(LAND_DURATION)
 
     robots_hist = robots_hist[1:]
+
+    t = datetime.now()
+    yy = t.year
+    mm = t.month
+    dd = t.day
+    hh = t.hour
+    m = t.minute
+    filename = f"{yy}-{mm}-{dd}-{hh}-{m}.npy"
+    print("Filename: ", filename)
+    if SAVE_POS:
+        np.save(libpath/"results"/filename, robots_hist)
+    
+    
+
+
+
     for i in range(ROBOTS_NUM):
         plt.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
     for t in range(TARGETS_NUM):
