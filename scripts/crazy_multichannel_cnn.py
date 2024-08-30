@@ -22,14 +22,13 @@ sys.path.append(str(crazypath/"scripts"))
 from pycrazyswarm import Crazyswarm
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Device: ", device)
-model = Multichannel_2D_CNN().to(device)
-libpath = Path.home() / "crazyswarm/ros_ws/src/cnn_coverage"
-model.load_state_dict(torch.load(libpath/"trained_models/multichannel_2d_cnn.pt", map_location=device))
-model.eval()
 
-np.random.seed(0)
+
+def objective_function(u):
+  return np.linalg.norm(u)**2
+
+def safety_constraint(u, A, b):
+  return -np.dot(A,u) + b
 
 ROBOTS_NUM = 7
 ROBOT_RANGE = 3.0
@@ -42,10 +41,22 @@ MAX_STEPS = 200
 SAFETY_DIST = 2.0
 CONVERGENCE_TOLERANCE = 0.1
 NUM_OBSTACLES = 1
-NUM_CHANNELS = 2
+NUM_CHANNELS = 3
+GAMMA = 0.5
+vmax = 1.5
+USE_CBF = False
 
 AREA_BOTTOM = -3.5
 AREA_TOP = 2.5
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Device: ", device)
+model = Multichannel_2D_CNN(NUM_CHANNELS).to(device)
+libpath = Path.home() / "crazyswarm/ros_ws/src/cnn_coverage"
+model.load_state_dict(torch.load(libpath/"trained_models/2d_cnn_3ch.pt", map_location=device))
+model.eval()
+
+np.random.seed(0)
 
 # targets = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand(TARGETS_NUM, 2)
 targets = np.array([[3.5, 1.0], [2.5, 2.0]])
@@ -156,20 +167,39 @@ def main():
                     # Check if outside boundaries
                     p_w = p_ij + p_i
                     if p_w[0] < -0.5*AREA_W or p_w[0] > 0.5*AREA_W or p_w[1] < AREA_BOTTOM or p_w[1] > AREA_TOP:
-                        img_i[1, i, j] = 255
+                        img_i[2, i, j] = 255
                     # Check for obstacles
                     for obs in obstacles:
                         if np.linalg.norm(p_w - obs) < SAFETY_DIST:
-                            img_i[1, i, j] = 255
+                            img_i[2, i, j] = 255
             img_in = torch.from_numpy(img_i)#.unsqueeze(0).unsqueeze(0)
             img_in = img_in.to(torch.float).to(device)
             vels_i = model(img_in) * r_step
-            vels_i = vels_i.cpu().detach().numpy()
-            vels[idx, :] = vels_i
-            if np.linalg.norm(vels_i) > CONVERGENCE_TOLERANCE:
+            vel_i = vels_i.cpu().detach().numpy()
+
+            # CBF
+            if USE_CBF:
+                constraints = []
+                local_obs = obstacles - p_i
+                for obs in local_obs:
+                    h = np.linalg.norm(obs)**2 - SAFETY_DIST**2
+                    A_cbf = 2*obs
+                    b_cbf = GAMMA * h
+                    constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+                
+                # print("vdes: ", vel_i)
+                # print("Acbf: ", A_cbf)
+                # print("b_cbf: ", b_cbf)
+                # print("h: ", h)
+                obj = lambda u: objective_function(u-vel_i)
+                res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+                vel_i = res.x
+
+            vels[idx, :] = vel_i
+            if np.linalg.norm(vel_i) > CONVERGENCE_TOLERANCE:
                 converged = False
         
-        print("Velocities: ")
+        # print("Velocities: ")
         print(vels)
 
         # for t in range(TARGETS_NUM):
@@ -227,7 +257,7 @@ def main():
     
     plt.show()
 
-    fig, ax = plt.subplots(1, 1, figsize=(8,8))
+    fig, ax = plt.subplots(1, 1)
     plot_occgrid(Xg, Yg, Z, ax=ax)
     for i in range(ROBOTS_NUM):
         ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
