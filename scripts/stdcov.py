@@ -223,7 +223,8 @@ for episode in range(EPISODES):
         collision_counter[episode, s-1] = 1
         print("Collision detected with neighbors!")
       for obs in obstacles:
-        if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
+        # if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
+        if np.linalg.norm(p_i-obs) < 0.5*SAFETY_DIST:
           collision_counter[episode, s-1] = 1
           print("Collision detected with obstacle!")
 
@@ -274,7 +275,7 @@ for episode in range(EPISODES):
         
         local_obs = obstacles - p_i
         for obs in local_obs:
-          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          h = np.linalg.norm(obs)**2 - (SAFETY_DIST)**2
           A_cbf = 2*obs
           b_cbf = GAMMA * h
           constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})

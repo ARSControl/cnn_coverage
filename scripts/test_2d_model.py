@@ -23,11 +23,11 @@ AREA_W = 30.0
 GRID_STEPS = 64
 vmax = 1.5
 SAFETY_DIST = 2.0
-EPISODES = 100
+EPISODES = 50
 NUM_OBSTACLES = 4 
 NUM_STEPS = 100
 NUM_CHANNELS = 3
-GAMMA = 0.2
+GAMMA = 0.5
 USE_CBF = True
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
@@ -224,8 +224,9 @@ for episode in range(EPISODES):
           
           # Check for obstacles (2x2 m)
           for obs in obstacles:
-            if p_w[0] > obs[0] - 1.0 and p_w[0] < obs[0] + 1.0 and p_w[1] > obs[1] - 1.0 and p_w[1] < obs[1] + 1.0:
-              img_obs[0, i, j] = 255 
+            # if p_w[0] > obs[0] - 1.0 and p_w[0] < obs[0] + 1.0 and p_w[1] > obs[1] - 1.0 and p_w[1] < obs[1] + 1.0:
+            if np.linalg.norm(p_w - obs) < 0.5*SAFETY_DIST:
+              img_obs[0, i, j] = 255
 
       # -------- EVAL -------
       region_id = vor.point_region[idx]
@@ -251,7 +252,8 @@ for episode in range(EPISODES):
         collision_counter[episode, s-1] = 1
         print("Collision detected with neighbors!")
       for obs in obstacles:
-        if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
+        # if p_i[0] > obs[0] - 1.0 and p_i[0] < obs[0] + 1.0 and p_i[1] > obs[1] - 1.0 and p_i[1] < obs[1] + 1.0:
+        if np.linalg.norm(p_i - obs) < 0.5*SAFETY_DIST:
           collision_counter[episode, s-1] = 1
           print("Collision detected with obstacle!")
 
@@ -279,7 +281,7 @@ for episode in range(EPISODES):
 
         local_obs = obstacles - p_i
         for obs in local_obs:
-          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          h = np.linalg.norm(obs)**2 - (SAFETY_DIST)**2
           A_cbf = 2*obs
           b_cbf = GAMMA * h
           constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
