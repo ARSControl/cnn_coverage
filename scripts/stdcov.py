@@ -291,7 +291,7 @@ for episode in range(EPISODES):
         conv = False
       
     eta = num / denom
-    eval_data[episode, s-1] = eta
+    eval_data[episode, s-1] = eta[0]
 
   
 

@@ -24,11 +24,11 @@ GRID_STEPS = 64
 vmax = 1.5
 SAFETY_DIST = 2.0
 EPISODES = 100
-NUM_OBSTACLES = 0 
+NUM_OBSTACLES = 4 
 NUM_STEPS = 100
 NUM_CHANNELS = 3
 GAMMA = 0.2
-USE_CBF = False
+USE_CBF = True
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -120,9 +120,9 @@ for episode in range(EPISODES):
   Zmax = np.max(Z)
   Z = Z / Zmax
 
-  fig, [ax, ax2] = plt.subplots(1, 2, figsize=(12,6))
-  plot_occgrid(Xg, Yg, Z, ax=ax)
-  plot_occgrid(Xg, Yg, Z, ax=ax2)
+  # fig, [ax, ax2] = plt.subplots(1, 2, figsize=(12,6))
+  # plot_occgrid(Xg, Yg, Z, ax=ax)
+  # plot_occgrid(Xg, Yg, Z, ax=ax2)
 
 
 
@@ -310,8 +310,8 @@ for episode in range(EPISODES):
 
   path = Path().resolve()
   res_path = path / "results"
-  np.save(res_path/"eta12_conv.npy", eval_data)
-  np.save(res_path/"collisions12_conv.npy", collision_counter)
+  np.save(res_path/"eta12.npy", eval_data)
+  np.save(res_path/"collisions12.npy", collision_counter)
 
 '''
 for i in range(ROBOTS_NUM):
