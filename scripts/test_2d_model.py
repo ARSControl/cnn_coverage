@@ -23,12 +23,12 @@ AREA_W = 30.0
 GRID_STEPS = 64
 vmax = 1.5
 SAFETY_DIST = 2.0
-EPISODES = 50
+EPISODES = 1
 NUM_OBSTACLES = 4 
-NUM_STEPS = 100
+NUM_STEPS = 50
 NUM_CHANNELS = 3
 GAMMA = 0.5
-USE_CBF = True
+USE_CBF = False
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -225,7 +225,7 @@ for episode in range(EPISODES):
           # Check for obstacles (2x2 m)
           for obs in obstacles:
             # if p_w[0] > obs[0] - 1.0 and p_w[0] < obs[0] + 1.0 and p_w[1] > obs[1] - 1.0 and p_w[1] < obs[1] + 1.0:
-            if np.linalg.norm(p_w - obs) < 0.5*SAFETY_DIST:
+            if np.linalg.norm(p_w - obs) < SAFETY_DIST:
               img_obs[0, i, j] = 255
 
       # -------- EVAL -------
@@ -315,19 +315,23 @@ for episode in range(EPISODES):
   np.save(res_path/"eta12.npy", eval_data)
   np.save(res_path/"collisions12.npy", collision_counter)
 
-'''
+"""
+fig, ax = plt.subplots(1, 1)
+plot_occgrid(Xg, Yg, Z, ax=ax)
+
 for i in range(ROBOTS_NUM):
   ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
   ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
+th = np.arange(0, 2*np.pi+np.pi/20, np.pi/20)
 for obs in obstacles:
-  o_x = np.array([obs[0]-1, obs[0]+1, obs[0]+1, obs[0]-1, obs[0]-1])
-  o_y = np.array([obs[1]-1, obs[1]-1, obs[1]+1, obs[1]+1, obs[1]-1])
+  # o_x = np.array([obs[0]-1, obs[0]+1, obs[0]+1, obs[0]-1, obs[0]-1])
+  # o_y = np.array([obs[1]-1, obs[1]-1, obs[1]+1, obs[1]+1, obs[1]-1])
+  o_x = obs[0] + 0.5*SAFETY_DIST*np.cos(th)
+  o_y = obs[1] + 0.5*SAFETY_DIST*np.sin(th)
   ax.plot(o_x, o_y, c='r', linewidth=3)
 
-for i in range(ROBOTS_NUM):
-  ax2.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
 plt.show()
-'''
 
+"""

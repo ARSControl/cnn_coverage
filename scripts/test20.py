@@ -25,10 +25,10 @@ vmax = 1.5
 SAFETY_DIST = 2.0
 EPISODES = 50
 NUM_OBSTACLES = 4
-NUM_STEPS = 100
+NUM_STEPS = 50
 NUM_CHANNELS = 3
 GAMMA = 0.5
-USE_CBF = True
+USE_CBF = False
 
 resolution = 2 * ROBOT_RANGE / GRID_STEPS
 
@@ -224,7 +224,7 @@ for episode in range(EPISODES):
           # Check for obstacles (2x2 m)
           for obs in obstacles:
             # if p_w[0] > obs[0] - 1.0 and p_w[0] < obs[0] + 1.0 and p_w[1] > obs[1] - 1.0 and p_w[1] < obs[1] + 1.0:
-            if np.linalg.norm(p_w - obs) < 0.5*SAFETY_DIST: 
+            if np.linalg.norm(p_w - obs) < SAFETY_DIST: 
               img_obs[0, i, j] = 255 
 
       # -------- EVAL -------
