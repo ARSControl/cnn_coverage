@@ -51,9 +51,10 @@ OBSTACLES_NUM = args.obstacles_num
 AREA_W = args.width
 vmax = 1.5
 SAFETY_DIST = 2.0
-NUM_STEPS = 100
-EPISODES = 100
-USE_CBF = True if OBSTACLES_NUM > 0 else False
+NUM_STEPS = 50
+EPISODES = 50
+# USE_CBF = True if OBSTACLES_NUM > 0 else False
+USE_CBF = False
 print("ROOBTS NUM : ", ROBOTS_NUM)
 
 path = Path().resolve()
@@ -136,6 +137,16 @@ for episode in range(EPISODES):
       if (norm > 3.0).all():
         done = True   
 
+  obs_polygons = []
+  th = np.arange(0, 2*np.pi, np.pi/10)
+  for obs in obstacles:
+      vs = []
+      for thx in th:
+          xo = obs[0]+0.5*SAFETY_DIST*np.cos(thx)
+          yo = obs[1]+0.5*SAFETY_DIST*np.sin(thx)
+          vs.append(Point(xo, yo))
+      obs_polygons.append(Polygon(vs))
+    
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
   denom = np.sum(s**2 * gmm_pdf(Xg, Yg, means, covariances, mix))
   print("Total info: ", denom)
@@ -183,6 +194,11 @@ for episode in range(EPISODES):
         # plt.plot(xi, yi, c='tab:blue')
 
       range_poly = Polygon(range_pts)
+      
+      # Remove obstacles
+      # for obs in obs_polygons:
+      #   range_poly = range_poly.difference(obs)
+
       xc, yc = range_poly.exterior.xy
 
       lim_region = intersection(poly, range_poly)
@@ -241,7 +257,12 @@ for episode in range(EPISODES):
       for i in np.arange(xmin, xmax, discretize_precision):
         for j in np.arange(ymin, ymax, discretize_precision):
           pt_i = Point(i,j)
-          if lim_region.contains(pt_i):
+          insideObs = False
+          for obs in obs_polygons:
+              if obs.contains(pt_i):
+                  insideObs = True
+              
+          if lim_region.contains(pt_i) and not insideObs:
             dA_pdf = dA * gmm_pdf(i, j, means, covariances, mix)
             # print(dA_pdf)
             A = A + dA_pdf
@@ -301,7 +322,7 @@ for episode in range(EPISODES):
       break
 
   print("Eta: ", eta)
-  print("Collisions: ", collision_counter[0, :].sum())
+  # print("Collisions: ", collision_counter[0, :].sum())
   res_path = path / "results"
   np.save(res_path/f"eta{ROBOTS_NUM}_std_{OBSTACLES_NUM}_obs.npy", eval_data)
   np.save(res_path/f"collisions{ROBOTS_NUM}_std_{OBSTACLES_NUM}_obs.npy", collision_counter)
