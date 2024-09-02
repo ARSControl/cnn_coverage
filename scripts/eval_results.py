@@ -43,23 +43,26 @@ for e in range(len(etas)):
 print("Eta shape after removing: ", etas[0].shape)
 
 for e in range(len(etas)):
-    ids = (etas[e]==0).argmax(axis=1)
+    # ids = (etas[e]==0).argmax(axis=1)
     for i in range(etas[e].shape[0]):
-        etas[e][i, ids[i]:] = etas[e][i, ids[i]-1]
-
+        for j in range(etas[e].shape[1]):
+            if etas[e][i,j] == 0:
+                etas[e][i,j] = etas[e][i,j-1]
 
 for e in range(len(etas_std)):
     for i in range(etas_std[e].shape[0]):
         if etas_std[e][i, 0] == 0:
             break
-    etas_std[e] = etas_std[e][:i, :]
+    etas_std[e] = etas_std[e][:i+1, :]
    
-# print("Eta shape after removing: ", etas[0].shape)
+    print("std Eta shape after removing: ", etas_std[e].shape)
 
 for e in range(len(etas_std)):
-    ids = (etas_std[e]==0).argmax(axis=1)
+    # ids = (etas[e]==0).argmax(axis=1)
     for i in range(etas_std[e].shape[0]):
-        etas_std[e][i, ids[i]:] = etas[e][i, ids[i]-1]
+        for j in range(etas_std[e].shape[1]):
+            if etas_std[e][i,j] == 0:
+                etas_std[e][i,j] = etas_std[e][i,j-1]
 
 etas_m = []
 stds = []
@@ -103,18 +106,25 @@ for i in range(len(collisions_std)):
     print(f"STD: Number of collisions with {ns[i]} robots: {tot}")
  
 
-t = np.arange(etas[0].shape[0])
+t = np.arange(etas[0].shape[1])
+print("t shape: ", t.shape)
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(12,6))
 colors = ['tab:blue', 'tab:orange', 'tab:green']
 for i, eta in enumerate(etas_m):
     ax.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
+    ax2.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
     ax.fill_between(t, eta-stds[i], eta+stds[i], color=colors[i], alpha=0.2)
-ax.title.set_text("proposed effectiveness")
+ax.title.set_text("proposed")
+ax.set_xlabel("t")
+ax.set_ylabel("effectiveness")
 
 for i, eta in enumerate(etas_std_m):
-    ax2.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
-    ax2.fill_between(t, eta-stds_s[i], eta+stds_s[i], color=colors[i], alpha=0.2)
-ax2.title.set_text("traditional effectiveness")
+    ax2.plot(t, eta, '--', c=colors[i])
+    
+    # ax2.fill_between(t, eta-stds_s[i], eta+stds_s[i], color=colors[i], alpha=0.2)
+ax2.title.set_text("traditional")
+ax2.set_xlabel("t")
+
 ax.grid(); ax2.grid()
 ax.legend(); ax2.legend()
 
