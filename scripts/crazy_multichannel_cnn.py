@@ -32,11 +32,11 @@ def objective_function(u):
 def safety_constraint(u, A, b):
   return -np.dot(A,u) + b
 
-ROBOTS_NUM = 7
+ROBOTS_NUM = 8
 ROBOT_RANGE = 2.0
 AREA_W = 10.0
 AREA_H = 6.0
-TARGETS_NUM = 2
+TARGETS_NUM = 3
 SAMPLES_NUM = 100
 STD_DEV = 1.0
 MAX_STEPS = 200
@@ -62,14 +62,15 @@ model.eval()
 np.random.seed(0)
 
 # targets = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand(TARGETS_NUM, 2)
-targets = np.array([[3.5, 1.0], [2.5, 2.0]])
-# targets = np.array([[-2.5, 1.0], [2.5, 2.0]])
+# targets = np.array([[3.5, 1.0], [2.5, 2.0]])
+targets = np.array([[3.5, 1.0], [2.5, 2.0], [0.5, 1.0]])
+# targets = np.array([[0.5, -1.5], [2.5, 2.0]])
 # targets = np.zeros((TARGETS_NUM, 2))
 # for k in range(TARGETS_NUM):
 #     targets[k, 0] = -0.5*(AREA_W-2) + (AREA_W-2)*np.random.rand()
 #     targets[k, 1] = AREA_BOTTOM + 1 + (AREA_TOP-AREA_BOTTOM-2)*np.random.rand()
 
-obstacles = np.array([[-0.3, 0.0]])
+obstacles = np.array([[-1.5, 1.0]])
 
 print("Targets shape:  ", targets.shape)
 print("TArget 0: ", targets[0])
