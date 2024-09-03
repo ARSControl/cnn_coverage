@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
+from utils import *
+
 path = Path("/home/mattia/cnn_coverage/dataset_3ch")
 files = [x for x in path.glob("**/*") if x.is_file()]
 
@@ -50,9 +52,12 @@ print("Shapes: ", xg.shape, yg.shape)
 
 
 fig, axs = plt.subplots(1,3, figsize=(18,6))
-axs[0].scatter(xg, yg, c=G, cmap="Greens")
-axs[1].scatter(xg, yg, c=N, cmap="Blues")
-axs[2].scatter(xg, yg, c=OBS, cmap="Reds")
+# axs[0].scatter(xg, yg, c=G, cmap="Greens")
+# axs[1].scatter(xg, yg, c=N, cmap="Blues")
+# axs[2].scatter(xg, yg, c=OBS, cmap="Reds")
+plot_occgrid(xg, yg, G, ax=axs[0], colormap="Greens")
+plot_occgrid(xg, yg, N, ax=axs[1], colormap="Blues")
+plot_occgrid(xg, yg, OBS, ax=axs[2], colormap="Reds")
 
 for ax in axs:
   ax.set_xticks([])

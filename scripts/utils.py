@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 
-def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None):
+def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None, colormap="YlOrRd"):
   """
   Plot heatmap of occupancy grid.
   x, y, z : meshgrid
@@ -15,8 +15,8 @@ def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None):
 
   if ax is None:
     fig, ax = plt.subplots(1, 1, figsize=(6,6))
-  z_min = -1.0; z_max = 1.0
-  c = ax.pcolormesh(x, y, z, cmap="YlOrRd", vmin=z_min, vmax=z_max)
+  z_min = 0.0; z_max = 1.0
+  c = ax.pcolormesh(x, y, z, cmap=colormap, vmin=z_min, vmax=z_max)
   ax.set_xticks([]); ax.set_yticks([])
   if save:
     save_path = path / "{}.png".format(name)
