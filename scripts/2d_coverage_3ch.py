@@ -6,23 +6,26 @@ from shapely import Polygon, Point, intersection
 from tqdm import tqdm
 from pathlib import Path
 import math
+from scipy.optimize import minimize
 
 from copy import deepcopy as dc
 from sklearn.mixture import GaussianMixture
 
 ROBOTS_NUM = 6
 ROBOT_RANGE = 5.0
-TARGETS_NUM = 1
+TARGETS_NUM = 2
 COMPONENTS_NUM = 1
 PARTICLES_NUM = 500
 AREA_W = 20.0
 vmax = 1.5
 SAFETY_DIST = 2.0
 EPISODES = 100
-
+NUM_OBSTACLES = 4
+USE_CBF = True
+GAMMA = 0.5
 
 path = Path().resolve()
-path = (path / 'dataset_3ch/')
+path = (path / 'dataset_3ch_obs/')
 
 
 def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None):
@@ -90,6 +93,12 @@ def gmm_pdf(x, y, means, covariances, weights):
 
   return prob
 
+def objective_function(u):
+  return np.linalg.norm(u)**2
+
+def safety_constraint(u, A, b):
+  return -np.dot(A,u) + b
+
 
 
 for episode in range(EPISODES):
@@ -115,7 +124,7 @@ for episode in range(EPISODES):
   # Fit GMM
   samples = samples.reshape((TARGETS_NUM*PARTICLES_NUM, 2))
   print(samples.shape)
-  gmm = GaussianMixture(n_components=COMPONENTS_NUM, covariance_type='full', max_iter=1000)
+  gmm = GaussianMixture(n_components=TARGETS_NUM, covariance_type='full', max_iter=1000)
   gmm.fit(samples)
 
   means = gmm.means_
@@ -142,6 +151,12 @@ for episode in range(EPISODES):
   Zmax = np.max(Z)
   Z = Z / Zmax
 
+  fig, [ax, ax2] = plt.subplots(1, 2, figsize=(12,6))
+  plot_occgrid(Xg, Yg, Z, ax=ax)
+  plot_occgrid(Xg, Yg, Z, ax=ax2)
+      
+  
+
 
   # Simulate episode
   # ROBOTS_NUM = np.random.randint(6, ROBOTS_MAX)
@@ -156,6 +171,18 @@ for episode in range(EPISODES):
 
   imgs = np.zeros((1, ROBOTS_NUM, NUM_CHANNELS, GRID_STEPS, GRID_STEPS))
   vels = np.zeros((1, ROBOTS_NUM, 2))
+
+
+  # obstacles
+  obstacles = np.zeros((NUM_OBSTACLES, 2))
+  for i in range(NUM_OBSTACLES):
+    done = False
+    while not done:
+      obstacles[i, :] = -0.5*AREA_W + AREA_W*np.random.rand(1, 2)
+      obs_rel = points - obstacles[i]
+      norm = np.linalg.norm(obs_rel, axis=1)
+      if (norm > 3.0).all():
+        done = True   
 
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
   for s in range(1, NUM_STEPS+1):
@@ -188,6 +215,8 @@ for episode in range(EPISODES):
       Zmax_i = np.max(Z_i)
       Z_i = Z_i / Zmax_i
 
+     
+
       img_s[idx, 0, :, :] = Z_i * 255
 
       neighs = np.delete(vor.points[:ROBOTS_NUM], idx, 0)
@@ -216,6 +245,11 @@ for episode in range(EPISODES):
           p_w = p_ij + p_i
           if p_w[0] < -0.5*AREA_W or p_w[0] > 0.5*AREA_W or p_w[1] < -0.5*AREA_W or p_w[1] > 0.5*AREA_W:
             img_obs[i, j] = 1.0
+          
+          # check obstacles
+          for obs in obstacles:
+            if p_w[0] > obs[0]-1 and p_w[0] < obs[0]+1 and p_w[1] > obs[1]-1 and p_w[1] < obs[1]+1:
+              img_obs[i, j] = 1.0
         
       img_s[idx, 1, :, :] = img_neighs * 255
       img_s[idx, 2, :, :] = img_obs * 255
@@ -282,7 +316,35 @@ for episode in range(EPISODES):
       vel = 0.8 * (centr - robot)
       vel[0, 0] = max(-vmax, min(vmax, vel[0,0]))
       vel[0, 1] = max(-vmax, min(vmax, vel[0,1]))
+      vel_i = vel[0]
+      
+      # CBF
+      if USE_CBF:
+        local_pts = neighs - p_i
+        constraints = []
+        # for n in local_pts:
+        #   h = np.linalg.norm(n)**2 - SAFETY_DIST**2
+        #   A_cbf = 2*n
+        #   b_cbf = GAMMA * h
+        #   constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        
+        local_obs = obstacles - p_i
+        for obs in local_obs:
+          h = np.linalg.norm(obs)**2 - (2*SAFETY_DIST)**2
+          A_cbf = 2*obs
+          b_cbf = GAMMA * h
+          constraints.append({'type': 'ineq', 'fun': lambda u: safety_constraint(u, A_cbf, b_cbf)})
+        # print("vdes: ", vel_i)
+        # print("Acbf: ", A_cbf)
+        # print("b_cbf: ", b_cbf)
+        # print("h: ", h)
+        obj = lambda u: objective_function(u-vel_i)
+        res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+        vel = res.x
+      
       vel_s[idx, :] = vel
+
+
 
       points[idx, :] = robot + vel
       if dist > 0.1:
@@ -305,8 +367,21 @@ for episode in range(EPISODES):
   imgs = imgs[1:]
   vels = vels[1:]
 
+  """
+  for i in range(ROBOTS_NUM):
+    ax.plot(robots_hist[:, i, 0], robots_hist[:, i, 1])
+    ax.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
 
+  for obs in obstacles:
+    o_x = np.array([obs[0]-1, obs[0]+1, obs[0]+1, obs[0]-1, obs[0]-1])
+    o_y = np.array([obs[1]-1, obs[1]-1, obs[1]+1, obs[1]+1, obs[1]-1])
+    ax.plot(o_x, o_y, c='r', linewidth=3)
 
+  for i in range(ROBOTS_NUM):
+    ax2.scatter(robots_hist[-1, i, 0], robots_hist[-1, i, 1])
+
+  plt.show()
+  """
   
   with open(str(path/f"test{episode}.npy"), 'wb') as f:
     np.save(f, imgs)
