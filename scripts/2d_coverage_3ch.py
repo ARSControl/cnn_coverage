@@ -104,8 +104,8 @@ def safety_constraint(u, A, b):
 for episode in range(EPISODES):
   targets = np.zeros((TARGETS_NUM, 1, 2))
   for i in range(TARGETS_NUM):
-    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
-    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand(1,1)
+    targets[i, 0, 0] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
+    targets[i, 0, 1] = -0.5*(AREA_W-1) + (AREA_W-1) * np.random.rand()
 
   # plt.plot([-0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, -0.5*AREA_W], c='tab:blue', label="Environment")
   # plt.plot([0.5*AREA_W, 0.5*AREA_W], [-0.5*AREA_W, 0.5*AREA_W], c='tab:blue')
