@@ -138,6 +138,12 @@ for episode in range(EPISODES):
 
   obstacles = np.array([5.0, -5.0])
   OBS_W = 20.0
+  vs = []
+  vs.append(Point(np.array([obstacles[0]-0.5*OBS_W, obstacles[1]-0.5*OBS_W])))
+  vs.append(Point(np.array([obstacles[0]+0.5*OBS_W, obstacles[1]-0.5*OBS_W])))
+  vs.append(Point(np.array([obstacles[0]+0.5*OBS_W, obstacles[1]+0.5*OBS_W])))
+  vs.append(Point(np.array([obstacles[0]-0.5*OBS_W, obstacles[1]+0.5*OBS_W])))
+  obs_polygon = Polygon(vs)
 
   fig, ax = plt.subplots(1, 1, figsize=(8,8))
   plot_occgrid(Xg, Yg, Z, ax=ax)
@@ -157,6 +163,8 @@ for episode in range(EPISODES):
   discretize_precision = 0.5
   dt = 0.25
   failed = False
+
+  
 
 
 
@@ -273,9 +281,8 @@ for episode in range(EPISODES):
         for j in np.arange(ymin, ymax, discretize_precision):
           pt_i = Point(i,j)
           insideObs = False
-          for obs in obs_polygons:
-              if obs.contains(pt_i):
-                  insideObs = True
+          if obs_polygon.contains(pt_i):
+              insideObs = True
               
           if lim_region.contains(pt_i) and not insideObs:
             dA_pdf = dA * gmm_pdf(i, j, means, covariances, mix)
@@ -332,9 +339,7 @@ for episode in range(EPISODES):
         all_stopped = False
     
     robots_hist = np.concatenate((robots_hist, np.expand_dims(points, 0)))
-    eta = num / denom
     # print("Efficiency: ", eta)
-    eval_data[episode, s-1] = eta[0]
 
     
 
