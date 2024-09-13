@@ -130,6 +130,7 @@ def main():
     robots = np.zeros((ROBOTS_NUM, 2))
     vels = np.zeros_like(robots)
     robots_hist = np.zeros((1, ROBOTS_NUM, 2))
+    cbf_actions = np.zeros((1, ROBOTS_NUM))
     while not converged:
         print("Step: ", timestep)
         converged = True
@@ -140,7 +141,7 @@ def main():
         # print(robots)
         robots_hist = np.concatenate((robots_hist, np.expand_dims(robots, 0)), 0)
 
-        
+        cbf_i = np.zeros(ROBOTS_NUM)
         for idx in range(ROBOTS_NUM):
             p_i = robots[idx]
             Z_i = gmm_pdf(Xg_i, Yg_i, means-p_i, covariances, mix)
@@ -198,6 +199,9 @@ def main():
                 # print("h: ", h)
                 obj = lambda u: objective_function(u-vel_i)
                 res = minimize(obj, vel_i, constraints=constraints, bounds=[(-vmax, vmax), (-vmax, vmax)])
+                print("vel diff. ", res.x - vel_i)
+                diff = res.x - vel_i
+                cbf_i[idx] = np.linalg.norm(diff[0])
                 vel_i = res.x
 
             vels[idx, :] = vel_i
@@ -206,6 +210,7 @@ def main():
         
         # print("Velocities: ")
         print(vels)
+        cbf_actions = np.concatenate((cbf_actions, np.expand_dims(cbf_i, 0)), 0)
 
         # for t in range(TARGETS_NUM):
         #     plt.scatter(targets[t,0], targets[t,1], s=14, c='r', marker='x')
@@ -257,10 +262,12 @@ def main():
     dd = t.day
     hh = t.hour
     m = t.minute
-    filename = f"{yy}-{mm}-{dd}-{hh}-{m}.npy"
+    # filename = f"{yy}-{mm}-{dd}-{hh}-{m}.npy"
+    filename = "sim.npy"
     print("Filename: ", filename)
     if SAVE_POS:
         np.save(libpath/"results"/filename, robots_hist)
+        np.save(libpath/"results/cbf.npy", cbf_actions)
     
     
 

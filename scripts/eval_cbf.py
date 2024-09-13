@@ -5,12 +5,20 @@ import math
 import os, sys
 from copy import deepcopy as dc
 from sklearn.mixture import GaussianMixture
+from scipy.optimize import minimize
 
 from datetime import datetime
 
 # import custom lib
 from utils import *
 from models import *
+
+
+def objective_function(u):
+  return np.linalg.norm(u)**2
+
+def safety_constraint(u, A, b):
+  return -np.dot(A,u) + b
 
 
 
@@ -75,21 +83,46 @@ path = Path.home() / "crazyswarm/ros_ws/src/cnn_coverage"
 robots = np.load(path / "results/vid3.npy")
 print("robot shape: ", robots.shape)
 
-fig, ax = plt.subplots(1, 1)
-# plot_occgrid(Xg, Yg, Z, ax=ax)
-ax.pcolormesh(Xg, Yg, Z, cmap="Reds", vmin=0.01, vmax=1.0)
-th = np.arange(0, 2*np.pi+np.pi/20, np.pi/20)
+NUM_STEPS = robots.shape[0]
+ROBOTS_NUM = robots.shape[1]
+
+As = np.zeros((NUM_STEPS, ROBOTS_NUM))
+Bs = np.zeros((NUM_STEPS, ROBOTS_NUM))
+hs = np.zeros((NUM_STEPS, ROBOTS_NUM))
+for s in range(robots.shape[0]):
+    for i in range(robots.shape[1]):
+        local_obs = obstacles - robots[s, i, :]
+        h = np.linalg.norm(local_obs)**2 - SAFETY_DIST**2
+        hs[s, i] = h
+      
+for i in range(hs.shape[0]):
+  for j in range(hs.shape[1]):
+    if hs[i,j] <= 0.05:
+      print(f"t: {i}, h: {hs[i,j]}")
+
+fig, ax = plt.subplots(1, 1, figsize=(12,8))
 for i in range(ROBOTS_NUM):
-    ax.plot(robots[:, i, 0], robots[:, i, 1])
-    ax.scatter(robots[-1, i, 0], robots[-1, i, 1], s=18, marker='^')
-for obs in obstacles:
-    xc = obs[0] + SAFETY_DIST*np.cos(th)
-    yc = obs[1] + SAFETY_DIST*np.sin(th)
-    ax.plot(xc, yc, linewidth=3, c='b')
+    ax.plot(hs[:, i], c='tab:blue', lw=3)
 
-ax.set_xlim([-0.5*AREA_W, 0.5*AREA_W])
-ax.set_ylim([AREA_BOTTOM, AREA_TOP])
-ax.set_xticks([]); ax.set_yticks([])
-
+plt.axhline(0.0, c='tab:red', lw=3)
+ax.set_ylim([-0.5, 5.0])
+ax.grid()
 plt.show()
+
+
+cbfs = np.load(path / "results/cbf.npy")
+print("Cbf shape: ", cbfs.shape)
+fig, ax = plt.subplots(1, 1)
+for i in range(ROBOTS_NUM):
+  ax.plot(cbfs[:, i]**2, lw=3)
+
+# plt.axhline(0.0, c='tab:red', lw=3)
+# ax.set_ylim([-0.1, 1.0])
+ax.grid()
+plt.show()
+
+
+
+
+
 
