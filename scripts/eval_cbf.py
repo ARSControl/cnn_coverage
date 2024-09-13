@@ -109,13 +109,16 @@ ax.set_ylim([-0.5, 5.0])
 ax.grid()
 plt.show()
 
-
+plt.rcParams.update({'font.size': 22})
 cbfs = np.load(path / "results/cbf.npy")
 print("Cbf shape: ", cbfs.shape)
 fig, ax = plt.subplots(1, 1)
 for i in range(ROBOTS_NUM):
   ax.plot(0.5*(cbfs[:, i]**2), lw=3)
 
+ax.set_xlabel("t")
+# ax.set_ylabel(r"$\frac{1}{2}\|\|\mathbf{u}_i - \mathbf{u}_i^*\|\|^2$")
+ax.set_ylabel("f")
 # plt.axhline(0.0, c='tab:red', lw=3)
 # ax.set_ylim([-0.1, 1.0])
 ax.grid()
