@@ -114,7 +114,7 @@ cbfs = np.load(path / "results/cbf.npy")
 print("Cbf shape: ", cbfs.shape)
 fig, ax = plt.subplots(1, 1)
 for i in range(ROBOTS_NUM):
-  ax.plot(cbfs[:, i]**2, lw=3)
+  ax.plot(0.5*(cbfs[:, i]**2), lw=3)
 
 # plt.axhline(0.0, c='tab:red', lw=3)
 # ax.set_ylim([-0.1, 1.0])
