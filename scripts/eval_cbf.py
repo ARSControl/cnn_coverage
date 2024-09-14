@@ -45,7 +45,7 @@ AREA_TOP = 2.5
 targets = np.array([[3.5, 1.0], [2.5, 2.0], [0.5, 1.0]])
 
 obstacles = np.array([[-1.5, 1.0]])
-
+"""
 print("Targets shape:  ", targets.shape)
 print("TArget 0: ", targets[0])
 print("Target 1: ", targets[1])
@@ -108,15 +108,17 @@ plt.axhline(0.0, c='tab:red', lw=3)
 ax.set_ylim([-0.5, 5.0])
 ax.grid()
 plt.show()
+"""
 
-plt.rcParams.update({'font.size': 18})
+path = Path().resolve()
+plt.rcParams.update({'font.size': 42  })
 cbfs = np.load(path / "results/cbf.npy")
 print("Cbf shape: ", cbfs.shape)
 vals = np.power(cbfs, 2) * 0.5
 print("Max val: ", vals.max())
 fig, ax = plt.subplots(1, 1)
 for i in range(ROBOTS_NUM):
-  ax.plot(0.5*(cbfs[:, i]**2), lw=3)
+  ax.plot(0.5*(cbfs[:, i]**2), lw=8)
 
 ax.set_xlabel("t")
 # ax.set_ylabel(r"$\frac{1}{2}\|\|\mathbf{u}_i - \mathbf{u}_i^*\|\|^2$")
