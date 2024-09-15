@@ -1,6 +1,9 @@
 import numpy as np
 import math
 from pathlib import Path
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 from matplotlib import pyplot as plt
 import argparse
 
@@ -105,31 +108,32 @@ for i in range(len(collisions_std)):
     collisions_num.append(tot)
     print(f"STD: Number of collisions with {ns[i]} robots: {tot}")
  
+plt.rcParams.update({'font.size': 38})
 
-t = np.arange(etas[0].shape[1])
+t = np.arange(1, etas[0].shape[1]+1)
 print("t shape: ", t.shape)
-fig, [ax, ax2] = plt.subplots(1, 2, figsize=(12,6))
+fig, ax = plt.subplots(1, 1)
 colors = ['tab:blue', 'tab:orange', 'tab:green']
 for i, eta in enumerate(etas_m):
-    ax.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
-    ax2.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
+    ax.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i], lw=8)
+    # ax2.plot(t, eta, label=f"{ns[i]} Robots", c=colors[i])
     ax.fill_between(t, eta-stds[i], eta+stds[i], color=colors[i], alpha=0.2)
-ax.title.set_text("proposed")
+# ax.title.set_text("proposed")
 ax.set_xlabel("t")
-ax.set_ylabel("effectiveness")
+ax.set_ylabel(r"$\eta$")
 
-for i, eta in enumerate(etas_std_m):
-    ax2.plot(t, eta, '--', c=colors[i])
+# for i, eta in enumerate(etas_std_m):
+#     ax2.plot(t, eta, '--', c=colors[i])
     
     # ax2.fill_between(t, eta-stds_s[i], eta+stds_s[i], color=colors[i], alpha=0.2)
-ax2.title.set_text("traditional")
-ax2.set_xlabel("t")
+# ax2.title.set_text("traditional")
+# ax2.set_xlabel("t")
 
-ax.grid(); ax2.grid()
-ax.legend(); ax2.legend()
+ax.grid() #ax2.grid()
+ax.legend()#; ax2.legend()
 
 if args.save:
-    figpath = Path.home() / "cnn_coverage/pics"
-    plt.savefig(figpath/"eta_comparison.png")
+    figpath = Path().resolve() / "pics"
+    plt.savefig(figpath/"eta1.pdf")
 if args.plot:
     plt.show()
