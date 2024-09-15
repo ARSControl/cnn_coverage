@@ -22,6 +22,9 @@ This repository contains training and testing scripts for a decentralized CNN-ba
 ## Training
 Data is collected running an expert algorithm, generating pairs of (images, velocities) pairs for the training algorithm to learn how to produce a suitable control input for the robot. 
 
+A pre-collected dataset containing 40000 pairs is available here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13763588.svg)](https://doi.org/10.5281/zenodo.13763588)
+
+
 ## Testing
 The model can be tested on a simulated scenario with the desired number of robots and obstacles. 
 
