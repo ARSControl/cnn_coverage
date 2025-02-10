@@ -117,7 +117,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-path = Path("/home/mattia/coverage_cnn/datasets/3d_coverage")
+path = Path("/home/mattia/cnn_coverage/models")
 
 import torch
 from torch import nn
@@ -137,6 +137,8 @@ input_size = 64
 sequence_length = 64
 hidden_size = 32
 num_layers = 3
+GRID_STEPS = 16
+
 
 class CNN_LSTM_3D(nn.Module):
   def __init__(self, input_size, hidden_size, num_layers, num_classes):
@@ -218,10 +220,46 @@ class CNN_LSTM_3D_new(nn.Module):
 
     return out
 
-model = CNN_LSTM_3D_new(input_size, hidden_size, num_layers, num_classes).to(device)
+class CNN_3D(nn.Module):
+  def __init__(self, input_size, hidden_size, num_layers, num_classes):
+    super(CNN_3D, self).__init__()
+    self.cnn = nn.Sequential(
+        nn.Conv3d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        # nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        # nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+    )
+    self.fc1 = nn.Linear(64*GRID_STEPS**3, 256)
+    # self.fc1 = nn.Linear(2048, 256)
+    self.fc2 = nn.Linear(256, 128)
+    self.fc3 = nn.Linear(128, num_classes)
+    self.relu = nn.ReLU()
+    self.tanh = nn.Tanh()
+
+  def forward(self, x):
+    #cnn takes input of shape (batch_size, channels, seq_len)
+    out = self.cnn(x)
+    # lstm takes input of shape (batch_size, seq_len, input_size)
+    # print(f"shape after cnn: {out.shape}")
+    # out = out.view(out.shape[0], -1, out.shape[1])
+    out = out.view(out.shape[0], -1)
+    # print("Reshaped output: ", out.shape)
+    # out, _ = self.lstm(out)
+    # out = self.fc(out[:, -1, :])
+    out = self.relu(self.fc1(out))
+    out = self.relu(self.fc2(out))
+    out = self.fc3(out)
+
+    return out
+
+model = CNN_3D(input_size, hidden_size, num_layers, num_classes).to(device)
 
 
-PATH = path/'3d_model_positive.pt'
+PATH = path/'3d_model.pt'
 model.load_state_dict(torch.load(PATH))
 model.eval()
 print(model)
@@ -266,7 +304,6 @@ for episode in range(EPISODES):
 
 
   ## -------- Generate decentralized probability grid ---------
-  GRID_STEPS = 32
   s = AREA_W/GRID_STEPS     # step
 
   xg = np.linspace(-0.5*AREA_W, 0.5*AREA_W, GRID_STEPS)
@@ -289,16 +326,16 @@ for episode in range(EPISODES):
 
   # ---------- Simulate episode ---------
   # ROBOTS_NUM = np.random.randint(6, ROBOTS_MAX)
-  ROBOTS_NUM = 10
+  ROBOTS_NUM = 5
   converged = False
-  NUM_STEPS = 25
+  NUM_STEPS = 20
   points = -0.5*AREA_W + AREA_W * np.random.rand(ROBOTS_NUM, 3)
   robots_hist = np.zeros((1, points.shape[0], points.shape[1]))
   robots_hist[0, :, :] = points
   vis_regions = []
   discretize_precision = 0.5
 
-  imgs = np.zeros((1, ROBOTS_NUM, GRID_STEPS, GRID_STEPS, GRID_STEPS))
+  imgs = np.zeros((1, 2, ROBOTS_NUM, GRID_STEPS, GRID_STEPS, GRID_STEPS))
   vels = np.zeros((1, ROBOTS_NUM, 3))
 
   r_step = 2 * ROBOT_RANGE / GRID_STEPS
@@ -307,7 +344,7 @@ for episode in range(EPISODES):
 
     conv = True
     lim_regions = []
-    img_s = np.zeros((ROBOTS_NUM, GRID_STEPS, GRID_STEPS, GRID_STEPS))
+    img_s = np.zeros((ROBOTS_NUM, 2, GRID_STEPS, GRID_STEPS, GRID_STEPS))
     vel_s = np.zeros((ROBOTS_NUM, 3))
     for idx in range(ROBOTS_NUM):
       # Save grid
@@ -334,6 +371,7 @@ for episode in range(EPISODES):
       local_pts = np.delete(local_pts, undetected, 0)
 
       img_i = dc(Z_i)
+      img_obs = np.zeros((1, GRID_STEPS, GRID_STEPS, GRID_STEPS))
       for i in range(GRID_STEPS):
         for j in range(GRID_STEPS):
           for k in range(GRID_STEPS):
@@ -342,34 +380,38 @@ for episode in range(EPISODES):
             # print(f"Point ({i},{j}): {p_ij}")
             for n in local_pts:
               if np.linalg.norm(n - p_ij) <= SAFETY_DIST:
-                img_i[i, j, k] = -1.0
+                img_obs[0, i, j, k] = 1
 
             # Check if outside boundaries
             p_w = p_ij + p_i
             if p_w[0] < -0.5*AREA_W or p_w[0] > 0.5*AREA_W or p_w[1] < -0.5*AREA_W or p_w[1] > 0.5*AREA_W or p_w[2] > 0.5*AREA_W or p_w[2] < -0.5*AREA_W:
-              img_i[i, j, k] = -1.0
+              img_obs[0, i, j, k] = 1
+      img_i = np.concatenate((np.expand_dims(img_i, 0), img_obs), 0)
 
-      '''
-      if idx == 0:
-        print(f"Robot {idx} sees {len(local_pts)} neighbours.")
-        plot_img = img_i[::2, ::2, ::2]
-        xg_i = np.linspace(p_i[0]-ROBOT_RANGE, p_i[0]+ROBOT_RANGE, 16)
-        yg_i = np.linspace(p_i[1]-ROBOT_RANGE, p_i[1]+ROBOT_RANGE, 16)
-        zg_i = np.linspace(p_i[2]-ROBOT_RANGE, p_i[2]+ROBOT_RANGE, 16)
-        xg, yg, zg = np.meshgrid(xg_i, yg_i, zg_i)
-        ax = plt.figure().add_subplot(projection='3d')
-        ax.scatter(xg, yg, zg, c=plot_img, cmap="YlOrRd", vmin=-1.0, vmax=1.0)
-        ax.scatter(points[:, 0], points[:, 1], points[:, 2], marker='v')
-        ax.scatter(targets[:, 0, 0], targets[:, 0, 1], targets[:, 0, 2], marker='x', c='tab:green')
-        plt.show()
-      '''
       
-      img_i -= np.min(img_i)
-      img_i = img_i / np.max(img_i) * 100
-      img_in = torch.from_numpy(img_i).unsqueeze(0).unsqueeze(0)
+      # if idx == 0:
+      #   print(f"Robot {idx} sees {len(local_pts)} neighbours.")
+      #   plot_img = img_i[0, ::2, ::2, ::2]
+      #   xg_i = np.linspace(p_i[0]-ROBOT_RANGE, p_i[0]+ROBOT_RANGE, 16)
+      #   yg_i = np.linspace(p_i[1]-ROBOT_RANGE, p_i[1]+ROBOT_RANGE, 16)
+      #   zg_i = np.linspace(p_i[2]-ROBOT_RANGE, p_i[2]+ROBOT_RANGE, 16)
+      #   xg, yg, zg = np.meshgrid(xg_i, yg_i, zg_i)
+      #   ax = plt.figure().add_subplot(projection='3d')
+      #   ax.scatter(xg, yg, zg, c=plot_img, cmap="YlOrRd")
+      #   ax.scatter(points[:, 0], points[:, 1], points[:, 2], marker='v')
+      #   ax.scatter(targets[:, 0, 0], targets[:, 0, 1], targets[:, 0, 2], marker='x', c='tab:green')
+      #   # ax.set_xlim([-0.5*AREA_W, 0.5*AREA_W])
+      #   # ax.set_ylim([-0.5*AREA_W, 0.5*AREA_W])
+      #   plt.axis('equal')
+      #   plt.show()
+      
+      
+      # img_i -= np.min(img_i)
+      # img_i = img_i / np.max(img_i) #* 100
+      img_in = torch.from_numpy(img_i).unsqueeze(0)#.unsqueeze(0)
       img_in = img_in.to(torch.float).to(device)
-      vel_i = model(img_in)
-      # print(f"Velocity of robot {idx}: {vel_i}")
+      vel_i = model(img_in)*r_step
+      print(f"Velocity of robot {idx}: {vel_i}")
       # print("points[idx] shape: ", points[idx, :].shape)
       points[idx, 0] = points[idx, 0] + vel_i[0, 0]
       points[idx, 1] = points[idx, 1] + vel_i[0, 1]

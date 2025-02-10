@@ -23,8 +23,6 @@ vmax = 1.5
 SAFETY_DIST = 2.0
 EPISODES = 1
 
-path = Path().resolve()
-path = (path / 'logs/rnn_coverage/')
 
 def plot_occgrid(x, y, z, save=False, name="occgrid", ax=None):
   """
@@ -91,7 +89,7 @@ def gmm_pdf(x, y, means, covariances, weights):
 
 
 
-path = Path("/home/mattia/coverage_cnn/datasets/3d_coverage")
+path = Path("/home/mattia/cnn_coverage/datasets/dataset_3d_multichannel/samples")
 files = [x for x in path.glob("**/*") if x.is_file()]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,7 +99,7 @@ imgs = []
 vels = []
 FILES_NUM = len(files)//2
 
-for i in range(7):
+for i in range(5):
   img = np.load(str(path / f"test{i}.npy"))
   if not np.isnan(np.min(img)):
     imgs.append(img)
@@ -109,14 +107,14 @@ for i in range(7):
 
 
 # check for nans inside dataset
-nan_counts = 0
-for img in imgs:
-  print("Nans found" if np.isnan(np.min(img)) else "No nans found.")
+# nan_counts = 0
+# for img in imgs:
+#   print("Nans found" if np.isnan(np.min(img)) else "No nans found.")
 
 print("Shape of single img: ", imgs[0].shape)
 print("Shape of single vels: ", vels[0].shape)
 ROBOTS_NUM = imgs[0].shape[1]
-GRID_STEPS = imgs[0].shape[-1]//2
+GRID_STEPS = imgs[0].shape[-1]//4
 print("Number of robots: ", ROBOTS_NUM)
 
 
@@ -184,11 +182,11 @@ print("w1 shape: ", w1.shape)
 """
 
 
-p1 = imgs[0][:, :, ::2, ::2, ::2]
+p1 = imgs[0][:, :, :, ::4, ::4, ::4]
 w1 = vels[0]
 for i in range(1, len(imgs)):
   print(f"Max in img {i}: {np.max(img[i])}")
-  p1 = np.concatenate((p1, imgs[i][:, :, ::2, ::2, ::2]), 0)
+  p1 = np.concatenate((p1, imgs[i][:, :, :, ::4, ::4, ::4]), 0)
   # p1 = np.concatenate((p1, imgs[i]), 0)
   w1 = np.concatenate((w1, vels[i]), 0)
 print("P1 shape: ", p1.shape)
@@ -197,10 +195,15 @@ print("w1 shape: ", w1.shape)
 p1 = torch.from_numpy(p1).float()
 w1 = torch.from_numpy(w1).float()
 
-p1 = p1.view((-1, GRID_STEPS, GRID_STEPS, GRID_STEPS))
+p1 = p1.view((-1, 2, GRID_STEPS, GRID_STEPS, GRID_STEPS))
 w1 = w1.view((-1, 3))
 
-p1 = p1.permute(0, 3, 1, 2)
+# p1 = p1.permute(0, 3, 1, 2)
+
+r_step = 2*ROBOT_RANGE / GRID_STEPS
+w1 /= r_step
+
+
 
 
 
@@ -212,10 +215,10 @@ train_size = int(p1.shape[0]*0.75)
 print("Training size: ", train_size)
 
 X_train, Y_train, X_test, Y_test = p1[:train_size], w1[:train_size], p1[train_size:], w1[train_size:]
-X_train = X_train.unsqueeze(1)
-X_test = X_test.unsqueeze(1)
-Y_train = Y_train.unsqueeze(1)
-Y_test = Y_test.unsqueeze(1)
+# X_train = X_train.unsqueeze(1)
+# X_test = X_test.unsqueeze(1)
+# Y_train = Y_train.unsqueeze(1)
+# Y_test = Y_test.unsqueeze(1)
 X_train, X_test, Y_train, Y_test = X_train.to(device), X_test.to(device), Y_train.to(device), Y_test.to(device)
 print(f"Train/Test shapes: {X_train.shape}, {Y_train.shape}, {X_test.shape}, {Y_test.shape}")
 
@@ -224,7 +227,7 @@ print(f"Train/Test shapes: {X_train.shape}, {Y_train.shape}, {X_test.shape}, {Y_
 from torch.utils.data import TensorDataset, DataLoader
 
 num_classes = 3
-num_epochs = 20
+num_epochs = 5000
 batch_size = 16
 learning_rate = 0.0001
 
@@ -361,8 +364,44 @@ class CNN_LSTM_3D_new(nn.Module):
     
     return out
 
+class CNN_3D(nn.Module):
+  def __init__(self, input_size, hidden_size, num_layers, num_classes):
+    super(CNN_3D, self).__init__()
+    self.cnn = nn.Sequential(
+        nn.Conv3d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        # nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        # nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+    )
+    self.fc1 = nn.Linear(64*GRID_STEPS**3, 256)
+    # self.fc1 = nn.Linear(2048, 256)
+    self.fc2 = nn.Linear(256, 128)
+    self.fc3 = nn.Linear(128, num_classes)
+    self.relu = nn.ReLU()
+    self.tanh = nn.Tanh()
 
-cnn_lstm = CNN_LSTM_3D_new(input_size, hidden_size, num_layers, num_classes).to(device)
+  def forward(self, x):
+    #cnn takes input of shape (batch_size, channels, seq_len)
+    out = self.cnn(x)
+    # lstm takes input of shape (batch_size, seq_len, input_size)
+    # print(f"shape after cnn: {out.shape}")
+    # out = out.view(out.shape[0], -1, out.shape[1])
+    out = out.view(out.shape[0], -1)
+    # print("Reshaped output: ", out.shape)
+    # out, _ = self.lstm(out)
+    # out = self.fc(out[:, -1, :])
+    out = self.relu(self.fc1(out))
+    out = self.relu(self.fc2(out))
+    out = self.fc3(out)
+
+    return out
+
+
+model = CNN_3D(input_size, hidden_size, num_layers, num_classes).to(device)
 
 
 
@@ -371,11 +410,11 @@ from torch import optim
 #criterion = nn.CrossEntropyLoss()
 criterion=nn.MSELoss()
 
-optimizer = torch.optim.Adam(cnn_lstm.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
 RUN_BATCHED = True
-cnn_lstm.train()
+model.train()
 
 if RUN_BATCHED:
   # Train the model
@@ -387,9 +426,9 @@ if RUN_BATCHED:
       # clear gradients for this training step
       optimizer.zero_grad()
 
-      output = cnn_lstm(images)
+      output = model(images)
       #labels=labels.squeeze(1)
-      loss = criterion(output.unsqueeze(1), labels)
+      loss = criterion(output, labels)
 
       # backpropagation, compute gradients
       loss.backward()
@@ -405,11 +444,11 @@ if RUN_BATCHED:
       #print(f"Lables: {labels[epoch+1]}")
 
 
-    loss_values.append(running_loss)
+    loss_values.append(running_loss/len(train_loader))
 
 else:
   for epoch in range(num_epochs):
-    output = cnn_lstm(X_train)
+    output = model(X_train)
     loss = criterion(output.unsqueeze(1), y_train)
     optimizer.zero_grad()
     loss.backward()
@@ -417,9 +456,9 @@ else:
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
 
 
-
-PATH = path/'3d_model_norm.pt'
-torch.save(cnn_lstm.state_dict(), str(PATH))
+model_path = Path("/home/mattia/cnn_coverage/models")
+PATH = model_path/'3d_model.pt'
+torch.save(model.state_dict(), str(PATH))
 print("Model saved")
 
 plt.plot(loss_values, label="Loss")
@@ -431,6 +470,6 @@ for i in range(10):
     rnd = np.random.randint(0, X_test.shape[0])
     img = X_test[rnd]
     label = Y_test[rnd]
-    vel = cnn_lstm(img.unsqueeze(0))
+    vel = model(img.unsqueeze(0))
     print(f"Epoch {i+1} | Predicted: {vel} | Label: {label}")
 
