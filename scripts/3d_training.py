@@ -11,7 +11,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from copy import deepcopy as dc
-from sklearn.mixture import GaussianMixture
+# from sklearn.mixture import GaussianMixture
 
 
 ROBOT_RANGE = 5.0
@@ -89,7 +89,8 @@ def gmm_pdf(x, y, means, covariances, weights):
 
 
 
-path = Path("/home/mattia/cnn_coverage/datasets/dataset_3d_multichannel/samples")
+# path = Path("/home/mattia/cnn_coverage/datasets/dataset_3d_multichannel/samples")
+path = Path('/media/mattia/ext-ssd/3d_dataset/')
 files = [x for x in path.glob("**/*") if x.is_file()]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,7 +100,7 @@ imgs = []
 vels = []
 FILES_NUM = len(files)//2
 
-for i in range(5):
+for i in range(10):
   img = np.load(str(path / f"test{i}.npy"))
   if not np.isnan(np.min(img)):
     imgs.append(img)
@@ -114,7 +115,7 @@ for i in range(5):
 print("Shape of single img: ", imgs[0].shape)
 print("Shape of single vels: ", vels[0].shape)
 ROBOTS_NUM = imgs[0].shape[1]
-GRID_STEPS = imgs[0].shape[-1]//4
+GRID_STEPS = imgs[0].shape[-1]//2
 print("Number of robots: ", ROBOTS_NUM)
 
 
@@ -182,11 +183,11 @@ print("w1 shape: ", w1.shape)
 """
 
 
-p1 = imgs[0][:, :, :, ::4, ::4, ::4]
+p1 = imgs[0][:, :, :, ::2, ::2, ::2]
 w1 = vels[0]
 for i in range(1, len(imgs)):
   print(f"Max in img {i}: {np.max(img[i])}")
-  p1 = np.concatenate((p1, imgs[i][:, :, :, ::4, ::4, ::4]), 0)
+  p1 = np.concatenate((p1, imgs[i][:, :, :, ::2, ::2, ::2]), 0)
   # p1 = np.concatenate((p1, imgs[i]), 0)
   w1 = np.concatenate((w1, vels[i]), 0)
 print("P1 shape: ", p1.shape)
@@ -211,7 +212,8 @@ print("Final p1 shape: ", p1.shape)
 print("Final vels shape: ", w1.shape)
 
 
-train_size = int(p1.shape[0]*0.75)
+# train_size = int(p1.shape[0]*0.75)
+train_size = p1.shape[0]
 print("Training size: ", train_size)
 
 X_train, Y_train, X_test, Y_test = p1[:train_size], w1[:train_size], p1[train_size:], w1[train_size:]
@@ -227,9 +229,9 @@ print(f"Train/Test shapes: {X_train.shape}, {Y_train.shape}, {X_test.shape}, {Y_
 from torch.utils.data import TensorDataset, DataLoader
 
 num_classes = 3
-num_epochs = 5000
+num_epochs = 50
 batch_size = 16
-learning_rate = 0.0001
+learning_rate = 0.001
 
 input_size = 64
 sequence_length = 64
@@ -368,16 +370,16 @@ class CNN_3D(nn.Module):
   def __init__(self, input_size, hidden_size, num_layers, num_classes):
     super(CNN_3D, self).__init__()
     self.cnn = nn.Sequential(
-        nn.Conv3d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding=1),
+        nn.Conv3d(in_channels=2, out_channels=8, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        # nn.MaxPool3d(kernel_size=2, stride=2),
+        nn.Conv3d(in_channels=8, out_channels=16, kernel_size=3, stride=1, padding=1),
         nn.ReLU(),
         # nn.MaxPool3d(kernel_size=2, stride=2),
         nn.Conv3d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
         nn.ReLU(),
-        # nn.MaxPool3d(kernel_size=2, stride=2),
-        nn.Conv3d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
     )
-    self.fc1 = nn.Linear(64*GRID_STEPS**3, 256)
+    self.fc1 = nn.Linear(32*GRID_STEPS**3, 256)
     # self.fc1 = nn.Linear(2048, 256)
     self.fc2 = nn.Linear(256, 128)
     self.fc3 = nn.Linear(128, num_classes)
